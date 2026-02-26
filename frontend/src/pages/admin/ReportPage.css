@@ -1,0 +1,204 @@
+.rpt-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Date filter bar ── */
+.rpt-date-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 20px;
+}
+
+.rpt-date-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rpt-date-group label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rpt-date-input {
+    width: 160px !important;
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* ── Tab Bar ── */
+.rpt-tab-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 6px;
+}
+
+.rpt-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    color: #6b7280;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rpt-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.rpt-tab-btn.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+}
+
+/* ── Stat Cards ── */
+.rpt-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.rpt-stat-grid-5 {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 900px) {
+    .rpt-stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .rpt-stat-grid-5 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+
+    .rpt-stat-grid,
+    .rpt-stat-grid-5 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rpt-stat-card {
+    background: #13151f;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.rpt-stat-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+}
+
+.rpt-stat-value {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.rpt-stat-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 6px;
+}
+
+/* ── Chart Card ── */
+.rpt-chart-card {
+    background: #13151f;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.rpt-chart-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 20px 0;
+}
+
+/* ── Two Col Layout ── */
+.rpt-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 800px) {
+    .rpt-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Tab Content wrapper ── */
+.rpt-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ── Empty state ── */
+.rpt-empty {
+    color: #6b7280;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 2rem;
+}
+
+/* ── Table in report ── */
+.rpt-table {
+    font-size: 12.5px;
+}
+
+.rpt-table th,
+.rpt-table td {
+    padding: 8px 10px !important;
+}
+
+/* ── Alert box ── */
+.rpt-alert-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: #fca5a5;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+/* ── Skeleton ── */
+.rpt-skeleton {
+    border-radius: 16px;
+}

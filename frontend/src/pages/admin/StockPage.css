@@ -1,0 +1,165 @@
+/* ─── Stock page specific styles ─────────────────────── */
+
+.btn-warning {
+    background: rgba(251, 146, 60, 0.12);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.btn-warning:hover {
+    background: rgba(251, 146, 60, 0.22);
+}
+
+.stock-low-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    padding: 2px 10px;
+    background: rgba(251, 146, 60, 0.12);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.25);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stock-row-low td {
+    background: rgba(251, 146, 60, 0.04);
+}
+
+.stock-row-empty td {
+    background: rgba(248, 113, 113, 0.05);
+}
+
+/* ─── Adjust Modal ───────────────────────────────────── */
+.stock-modal {
+    max-width: 440px;
+}
+
+.stock-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stock-modal-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stock-modal-img {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.stock-modal-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.stock-modal-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 3px;
+}
+
+.stock-modal-sku {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: monospace;
+}
+
+.stock-qty-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.stock-qty-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stock-qty-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stock-qty-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1;
+}
+
+.stock-qty-value.changed {
+    color: #a5b4fc;
+}
+
+.stock-qty-arrow {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+/* Delta row (+/- input) */
+.stock-delta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stock-delta-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 9px;
+}
+
+.stock-delta-input {
+    flex: 1;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Preset shortcut buttons */
+.stock-preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.stock-preset-minus {
+    color: #f87171 !important;
+    border-color: rgba(248, 113, 113, 0.3) !important;
+}
+
+.stock-preset-minus:hover {
+    background: rgba(248, 113, 113, 0.1) !important;
+}

@@ -22,13 +22,20 @@ app.use(cors());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Routes
-app.use("/api/products", productRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/variants", variantRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/admin/orders", adminOrderRoutes);
+// Public Routes
+app.use("/api/products", require("./routes/productRoutes"));
+app.use("/api/categories", require("./routes/categoryRoutes"));
+app.use("/api/variants", require("./routes/variantRoutes"));
+app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/auth", authRoutes);
+
+// Admin Routes (all require requireAdmin middleware via their router files)
+app.use("/api/admin/products", require("./routes/adminProductRoutes"));
+app.use("/api/admin/variants", require("./routes/adminVariantRoutes"));
+app.use("/api/admin/stock", require("./routes/adminStockRoutes"));
+app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/reports", reportRoutes);
+
 app.post("/api/upload", uploadController.upload.single("image"), uploadController.uploadImage);
 app.post("/api/ocr/scan", ocrController.upload.single("image"), ocrController.scanImage);
 

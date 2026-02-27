@@ -55,11 +55,11 @@ const CategoriesPage = () => {
                     </div>
                 ) : (
                     <table className="data-table">
-                        <thead><tr><th>ID</th><th>ชื่อหมวดหมู่</th><th>วันที่สร้าง</th><th>จัดการ</th></tr></thead>
+                        <thead><tr><th>#</th><th>ชื่อหมวดหมู่</th><th>วันที่สร้าง</th><th>จัดการ</th></tr></thead>
                         <tbody>
-                            {categories.map(c => (
+                            {categories.map((c, idx) => (
                                 <tr key={c.category_id}>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>#{c.category_id}</td>
+                                    <td style={{ color: '#AA5DC6', fontWeight: 700, fontSize: 13 }}>{idx + 1}</td>
                                     <td style={{ fontWeight: 600 }}>{c.name}</td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                                         {c.created_at ? new Date(c.created_at).toLocaleDateString('th-TH') : '—'}

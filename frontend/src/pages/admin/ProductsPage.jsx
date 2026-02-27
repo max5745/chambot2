@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Upload, RotateCcw, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Upload, RotateCcw, Star, LayoutGrid, Table, Filter } from 'lucide-react';
 import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, uploadImage, getImageUrl, getProductById, setMainVariant, updateVariantThreshold } from '../../api';
 import ProductImage from '../../components/ProductImage';
 import toast from 'react-hot-toast';
@@ -11,7 +11,7 @@ const formatPrice = (p) =>
 const emptyVariant = () => ({ sku: '', price: '', stock_quantity: 0, unit: '', image_url: '', low_stock_threshold: 5, is_main: false });
 const emptyProduct = () => ({ name: '', description: '', category_id: '', is_active: true, variants: [emptyVariant()] });
 
-/* ─── Threshold Adjuster Sub-Component ─── */
+/* ─── Threshold Adjuster ─── */
 const ThresholdAdjuster = ({ variantId, initialValue, onSaved }) => {
     const [value, setValue] = useState(initialValue ?? 5);
     const [saving, setSaving] = useState(false);
@@ -20,13 +20,11 @@ const ThresholdAdjuster = ({ variantId, initialValue, onSaved }) => {
         setSaving(true);
         try {
             await updateVariantThreshold(variantId, value);
-            toast.success('บันทึกค่าเกณฑ์สต็อกสำเร็จ');
+            toast.success('บันทึกเกณฑ์สต็อกสำเร็จ');
             if (onSaved) onSaved(variantId, value);
         } catch {
             toast.error('บันทึกล้มเหลว');
-        } finally {
-            setSaving(false);
-        }
+        } finally { setSaving(false); }
     };
 
     return (
@@ -34,13 +32,8 @@ const ThresholdAdjuster = ({ variantId, initialValue, onSaved }) => {
             <span className="threshold-label">เกณฑ์สต็อกต่ำ:</span>
             <div className="threshold-row">
                 <button type="button" className="threshold-btn" onClick={() => setValue(v => Math.max(0, v - 1))}>−</button>
-                <input
-                    type="number"
-                    className="threshold-input"
-                    value={value}
-                    min={0}
-                    onChange={e => setValue(Math.max(0, parseInt(e.target.value) || 0))}
-                />
+                <input type="number" className="threshold-input" value={value} min={0}
+                    onChange={e => setValue(Math.max(0, parseInt(e.target.value) || 0))} />
                 <button type="button" className="threshold-btn" onClick={() => setValue(v => v + 1)}>+</button>
             </div>
             <button type="button" className="btn-save-threshold" onClick={handleSave} disabled={saving}>
@@ -55,6 +48,8 @@ const ProductsPage = () => {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [search, setSearch] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [viewMode, setViewMode] = useState('grid');
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editData, setEditData] = useState(null);
@@ -84,9 +79,7 @@ const ProductsPage = () => {
         } catch {
             toast.error('ไม่สามารถโหลดข้อมูลสินค้าได้');
             setSelectedProduct(null);
-        } finally {
-            setDetailLoading(false);
-        }
+        } finally { setDetailLoading(false); }
     };
 
     const handleSetMain = async (variantId) => {
@@ -96,9 +89,7 @@ const ProductsPage = () => {
             const res = await getProductById(selectedProduct.product_id);
             setSelectedProduct(res.data.data);
             getProducts().then(r => setProducts(r.data.data || []));
-        } catch {
-            toast.error('เกิดข้อผิดพลาด');
-        }
+        } catch { toast.error('เกิดข้อผิดพลาด'); }
     };
 
     const handleThresholdSaved = (variantId, newValue) => {
@@ -145,10 +136,7 @@ const ProductsPage = () => {
         setForm(f => ({ ...f, variants: f.variants.map((v, i) => i === idx ? { ...v, [key]: val } : v) }));
 
     const handleSetMainInForm = (idx) => {
-        setForm(f => ({
-            ...f,
-            variants: f.variants.map((v, i) => ({ ...v, is_main: i === idx }))
-        }));
+        setForm(f => ({ ...f, variants: f.variants.map((v, i) => ({ ...v, is_main: i === idx })) }));
     };
 
     const addVariant = () => setForm(f => ({ ...f, variants: [...f.variants, emptyVariant()] }));
@@ -158,10 +146,7 @@ const ProductsPage = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const payload = {
-                ...form,
-                category_id: form.category_id ? Number(form.category_id) : null
-            };
+            const payload = { ...form, category_id: form.category_id ? Number(form.category_id) : null };
             if (payload.variants.length > 0 && !payload.variants.some(v => v.is_main)) {
                 payload.variants[0].is_main = true;
             }
@@ -178,38 +163,64 @@ const ProductsPage = () => {
         finally { setSaving(false); }
     };
 
-    const filtered = products.filter(p =>
-        (p.product_name || '').toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = products.filter(p => {
+        const matchSearch = (p.product_name || '').toLowerCase().includes(search.toLowerCase());
+        const matchCategory = !filterCategory || String(p.category_id) === String(filterCategory);
+        return matchSearch && matchCategory;
+    });
 
     return (
         <div>
+            {/* ── Header ── */}
             <div className="admin-page-header">
                 <div>
                     <h1 className="admin-page-title">สินค้าทั้งหมด</h1>
-                    <p className="admin-page-subtitle">{products.length} รายการ</p>
+                    <p className="admin-page-subtitle">{filtered.length} / {products.length} รายการ</p>
                 </div>
                 <div className="products-actions">
+                    <div className="admin-search-wrap" style={{ gap: 6, padding: '6px 12px' }}>
+                        <Filter size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        <select className="admin-search-input" value={filterCategory}
+                            onChange={e => setFilterCategory(e.target.value)} style={{ width: 140, cursor: 'pointer' }}>
+                            <option value="">ทุกหมวดหมู่</option>
+                            {categories.map(c => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}
+                        </select>
+                    </div>
                     <div className="admin-search-wrap">
                         <Search size={16} />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาสินค้า..." className="admin-search-input" />
+                        <input value={search} onChange={e => setSearch(e.target.value)}
+                            placeholder="ค้นหาสินค้า..." className="admin-search-input" />
+                    </div>
+                    <div className="view-toggle">
+                        <button className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setViewMode('grid')} title="Grid"><LayoutGrid size={16} /></button>
+                        <button className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                            onClick={() => setViewMode('table')} title="Table"><Table size={16} /></button>
                     </div>
                     <button className="btn btn-secondary btn-sm" onClick={fetchAll} title="รีเฟรช"><RotateCcw size={15} /></button>
                     <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> เพิ่มสินค้า</button>
                 </div>
             </div>
 
+            {/* ── Content ── */}
             {loading ? (
                 <div className="products-grid">
-                    {[...Array(8)].map((_, i) => (
-                        <div key={i} className="skeleton" style={{ height: 300, borderRadius: 24 }} />
-                    ))}
+                    {[...Array(8)].map((_, i) => <div key={i} className="skeleton" style={{ height: 300, borderRadius: 18 }} />)}
                 </div>
-            ) : (
+            ) : viewMode === 'grid' ? (
                 <>
                     <div className="products-grid">
                         {filtered.map(p => (
                             <div key={p.product_id} className="product-card" onClick={() => handleSelectProduct(p)}>
+                                {/* Hover action buttons */}
+                                <div className="product-card-actions" onClick={e => e.stopPropagation()}>
+                                    <button className="product-card-action-btn edit" title="แก้ไข" onClick={() => openEdit(p)}>
+                                        <Pencil size={13} />
+                                    </button>
+                                    <button className="product-card-action-btn del" title="ลบ" onClick={() => handleDelete(p.product_id)}>
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
                                 <div className="product-card-image">
                                     <ProductImage src={p.image_url} alt={p.product_name} />
                                     {p.total_stock <= (p.low_stock_threshold || 5) && (
@@ -217,55 +228,152 @@ const ProductsPage = () => {
                                     )}
                                 </div>
                                 <div className="product-card-content">
+                                    {p.category_name && <div className="product-card-cat">{p.category_name}</div>}
                                     <h3 className="product-card-title">{p.product_name}</h3>
                                     <p className="product-card-price">
                                         {p.min_price ? formatPrice(p.min_price) : '—'}
                                         {p.max_price && p.max_price !== p.min_price ? ` – ${formatPrice(p.max_price)}` : ''}
                                     </p>
+                                    <div className="product-card-stock">สต็อก: {p.total_stock ?? 0}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                     {filtered.length === 0 && (
-                        <div className="empty-state">
-                            <Search size={52} />
-                            <p>ไม่พบสินค้าที่คุณค้นหา</p>
-                        </div>
+                        <div className="empty-state"><Search size={52} /><p>ไม่พบสินค้าที่คุณค้นหา</p></div>
                     )}
                 </>
+            ) : (
+                /* ── Table View ── */
+                <div className="card" style={{ overflow: 'hidden' }}>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>รูป</th><th>ชื่อสินค้า</th><th>หมวดหมู่</th>
+                                <th>ราคา</th><th>สต็อกรวม</th><th>สถานะ</th><th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map(p => (
+                                <tr key={p.product_id} style={{ cursor: 'pointer' }} onClick={() => handleSelectProduct(p)}>
+                                    <td><div className="product-thumb"><ProductImage src={p.image_url} alt={p.product_name} /></div></td>
+                                    <td>
+                                        <div style={{ fontWeight: 700, fontSize: 14 }}>{p.product_name}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{p.variant_count || 0} variant</div>
+                                    </td>
+                                    <td>{p.category_name ? <span className="badge badge-purple">{p.category_name}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                                    <td><span style={{ fontWeight: 700, color: '#AA5DC6' }}>{p.min_price ? formatPrice(p.min_price) : '—'}</span></td>
+                                    <td>
+                                        {p.total_stock <= (p.low_stock_threshold || 5)
+                                            ? <span className="badge badge-orange">⚠ {p.total_stock ?? 0}</span>
+                                            : <span className="badge badge-green">{p.total_stock ?? 0}</span>}
+                                    </td>
+                                    <td><span className={`badge ${p.is_active ? 'badge-green' : 'badge-gray'}`}>{p.is_active ? 'เปิด' : 'ปิด'}</span></td>
+                                    <td>
+                                        <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}><Pencil size={13} /></button>
+                                            <button className="btn btn-outline btn-sm" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+                                                onClick={() => handleDelete(p.product_id)}><Trash2 size={13} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && (
+                                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 48 }}>ไม่พบสินค้า</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             )}
 
-            {/* ─── Detail Modal ─── */}
+            {/* ─── Detail Modal (center popup, large readable) ─── */}
             {selectedProduct && (
                 <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-                    <div className="modal-box detail-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>รายละเอียดสินค้า</h2>
-                            <button className="modal-close" onClick={() => setSelectedProduct(null)}><X size={20} /></button>
+                    <div className="modal-box prod-detail-modal" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="modal-header" style={{ padding: '22px 28px 18px' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'rgba(255,255,255,0.95)' }}>
+                                    {selectedProduct.product_name || selectedProduct.name}
+                                </h2>
+                                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                    <span className="badge badge-purple" style={{ fontSize: 13, padding: '5px 14px' }}>
+                                        {selectedProduct.category_name || 'ไม่ระบุหมวดหมู่'}
+                                    </span>
+                                    <span className={`badge ${selectedProduct.is_active ? 'badge-green' : 'badge-gray'}`}
+                                        style={{ fontSize: 13, padding: '5px 14px' }}>
+                                        {selectedProduct.is_active ? '✅ เปิดใช้งาน' : '⏸️ ปิดใช้งาน'}
+                                    </span>
+                                </div>
+                            </div>
+                            <button className="modal-close" onClick={() => setSelectedProduct(null)}>
+                                <X size={24} />
+                            </button>
                         </div>
-                        <div className="modal-body detail-body">
+
+                        {/* Body */}
+                        <div className="modal-body" style={{ padding: '0 28px 8px' }}>
                             {detailLoading ? (
                                 <div className="spinner-wrap"><div className="spinner" /></div>
                             ) : (
-                                <div className="detail-layout">
-                                    {/* Left: Image + Variants */}
-                                    <div className="detail-image-side">
-                                        <div className="detail-image">
+                                <div className="prod-detail-grid">
+                                    {/* Left: Image + numbers */}
+                                    <div className="prod-detail-img-col">
+                                        <div className="prod-detail-img">
                                             <ProductImage src={selectedProduct.image_url} alt={selectedProduct.product_name} />
                                         </div>
+                                        <div className="prod-detail-numbers">
+                                            <div className="prod-num-box">
+                                                <div className="prod-num-label">💰 ราคาขาย</div>
+                                                <div className="prod-num-val" style={{ color: '#AA5DC6' }}>
+                                                    {formatPrice(selectedProduct.min_price)}
+                                                    {selectedProduct.max_price && selectedProduct.max_price !== selectedProduct.min_price
+                                                        && <span style={{ fontSize: 16 }}> – {formatPrice(selectedProduct.max_price)}</span>}
+                                                </div>
+                                            </div>
+                                            <div className="prod-num-box">
+                                                <div className="prod-num-label">📦 สต็อกคงเหลือ</div>
+                                                <div className="prod-num-val">
+                                                    {selectedProduct.total_stock ?? 0}
+                                                    <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginLeft: 6 }}>
+                                                        {selectedProduct.variants?.[0]?.unit || 'ชิ้น'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <div>
-                                            <label className="section-label">ตัวเลือกสินค้า ({selectedProduct.variants?.length || 0})</label>
+                                    {/* Right: Description + Variants */}
+                                    <div className="prod-detail-info-col">
+                                        {selectedProduct.description && (
+                                            <div className="prod-detail-section">
+                                                <div className="prod-detail-section-title">📝 รายละเอียดสินค้า</div>
+                                                <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, margin: 0 }}>
+                                                    {selectedProduct.description}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="prod-detail-section">
+                                            <div className="prod-detail-section-title">
+                                                🏷️ ตัวเลือกสินค้า ({selectedProduct.variants?.length || 0} รายการ)
+                                            </div>
                                             <div className="variant-list">
                                                 {selectedProduct.variants?.map(v => (
-                                                    <div key={v.variant_id} className={`variant-item ${v.is_main ? 'main' : ''}`}>
-                                                        <div className="v-img"><ProductImage src={v.image_url} size={14} /></div>
+                                                    <div key={v.variant_id}
+                                                        className={`variant-item ${v.is_main ? 'main' : ''}`}
+                                                        style={{ padding: '14px 16px', gap: 14 }}>
+                                                        <div className="v-img" style={{ width: 52, height: 52, borderRadius: 10 }}>
+                                                            <ProductImage src={v.image_url} size={14} />
+                                                        </div>
                                                         <div className="v-info">
-                                                            <div className="v-sku">{v.sku || 'ไม่มี SKU'}</div>
-                                                            <div className="v-meta">
-                                                                {v.unit} • {formatPrice(v.price)} • สต็อก: {v.stock_quantity}
+                                                            <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: 4 }}>
+                                                                {v.sku || 'ไม่มีรหัสสินค้า'}
                                                             </div>
-                                                            {/* Threshold adjuster */}
+                                                            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+                                                                {v.unit && <span>{v.unit} · </span>}
+                                                                {formatPrice(v.price)} · สต็อก: <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{v.stock_quantity}</strong>
+                                                            </div>
                                                             <ThresholdAdjuster
                                                                 variantId={v.variant_id}
                                                                 initialValue={v.low_stock_threshold}
@@ -274,10 +382,14 @@ const ProductsPage = () => {
                                                         </div>
                                                         <div className="v-actions">
                                                             {v.is_main ? (
-                                                                <Star size={18} fill="var(--accent)" color="var(--accent)" />
+                                                                <span title="ตัวเลือกหลัก">
+                                                                    <Star size={22} fill="#AA5DC6" color="#AA5DC6" />
+                                                                </span>
                                                             ) : (
-                                                                <button title="ตั้งเป็นตัวหลัก" onClick={() => handleSetMain(v.variant_id)} className="btn-set-main">
-                                                                    <Star size={18} />
+                                                                <button title="ตั้งเป็นตัวหลัก"
+                                                                    onClick={() => handleSetMain(v.variant_id)}
+                                                                    className="btn-set-main">
+                                                                    <Star size={22} />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -286,54 +398,20 @@ const ProductsPage = () => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Right: Info */}
-                                    <div className="detail-info">
-                                        <h1 className="detail-title">{selectedProduct.product_name}</h1>
-                                        <div className="detail-meta">
-                                            <span className="badge badge-purple">{selectedProduct.category_name || 'ไม่ระบุหมวดหมู่'}</span>
-                                            <span className={`badge ${selectedProduct.is_active ? 'badge-green' : 'badge-gray'}`}>
-                                                {selectedProduct.is_active ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
-                                            </span>
-                                        </div>
-
-                                        <div className="detail-section">
-                                            <label>ราคา</label>
-                                            <div className="detail-price">
-                                                {formatPrice(selectedProduct.min_price)}
-                                                {selectedProduct.max_price && selectedProduct.max_price !== selectedProduct.min_price
-                                                    && ` – ${formatPrice(selectedProduct.max_price)}`}
-                                            </div>
-                                        </div>
-
-                                        <div className="detail-section">
-                                            <label>คำอธิบาย</label>
-                                            <p className="detail-desc">{selectedProduct.description || 'ไม่มีคำอธิบาย'}</p>
-                                        </div>
-
-                                        <div className="detail-section">
-                                            <label>สต็อกรวม</label>
-                                            <p className="detail-stock">
-                                                {selectedProduct.total_stock ?? 0} {selectedProduct.variants?.[0]?.unit || 'ชิ้น'}
-                                            </p>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-outline" style={{ minHeight: 52, fontSize: 16 }} onClick={() => {
-                                const p = selectedProduct;
-                                setSelectedProduct(null);
-                                handleDelete(p.product_id);
-                            }}>
+
+                        {/* Footer */}
+                        <div className="modal-footer" style={{ padding: '16px 28px 24px', gap: 12 }}>
+                            <button className="btn btn-secondary"
+                                style={{ minHeight: 52, fontSize: 16, color: '#f87171', gap: 8 }}
+                                onClick={() => { const p = selectedProduct; setSelectedProduct(null); handleDelete(p.product_id); }}>
                                 <Trash2 size={18} /> ลบสินค้า
                             </button>
-                            <button className="btn btn-primary" style={{ minHeight: 52, fontSize: 16 }} onClick={() => {
-                                const p = selectedProduct;
-                                setSelectedProduct(null);
-                                openEdit(p);
-                            }}>
+                            <button className="btn btn-primary"
+                                style={{ minHeight: 52, fontSize: 16, gap: 8, flex: 1 }}
+                                onClick={() => { const p = selectedProduct; setSelectedProduct(null); openEdit(p); }}>
                                 <Pencil size={18} /> แก้ไขข้อมูล
                             </button>
                         </div>
@@ -341,7 +419,7 @@ const ProductsPage = () => {
                 </div>
             )}
 
-            {/* ─── Form Modal ─── */}
+            {/* ─── Form Modal (Add / Edit) ─── */}
             {modalOpen && (
                 <div className="modal-overlay" onClick={() => setModalOpen(false)}>
                     <div className="modal-box" onClick={e => e.stopPropagation()}>
@@ -397,9 +475,8 @@ const ProductsPage = () => {
                                                 <button type="button"
                                                     onClick={() => handleSetMainInForm(i)}
                                                     className={`btn-star ${v.is_main ? 'active' : ''}`}
-                                                    title="ตั้งเป็นตัวเลือกหลัก"
-                                                >
-                                                    <Star size={16} fill={v.is_main ? 'var(--accent)' : 'none'} />
+                                                    title="ตั้งเป็นตัวเลือกหลัก">
+                                                    <Star size={16} fill={v.is_main ? '#AA5DC6' : 'none'} color={v.is_main ? '#AA5DC6' : 'currentColor'} />
                                                 </button>
                                                 {form.variants.length > 1 && (
                                                     <button type="button" className="remove-btn" onClick={() => removeVariant(i)}>
@@ -458,10 +535,10 @@ const ProductsPage = () => {
                                 ))}
                             </div>
 
-                            <div className="modal-footer" style={{ padding: '16px 0 0' }}>
+                            <div className="modal-footer" style={{ padding: '16px 0 0', border: 'none' }}>
                                 <button type="button" className="btn btn-secondary" style={{ minHeight: 52, fontSize: 16 }}
                                     onClick={() => setModalOpen(false)}>ยกเลิก</button>
-                                <button type="submit" className="btn btn-primary" style={{ minHeight: 52, fontSize: 16 }}
+                                <button type="submit" className="btn btn-primary" style={{ minHeight: 52, fontSize: 16, flex: 1 }}
                                     disabled={saving}>
                                     {saving ? <div className="spinner" style={{ width: 18, height: 18 }} /> : (editData ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า')}
                                 </button>

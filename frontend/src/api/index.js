@@ -28,10 +28,13 @@ export const createProduct = (data) => API.post('/products', data);
 export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
 export const deleteProduct = (id) => API.delete(`/products/${id}`);
 export const getLowStockProducts = () => API.get('/products/alerts/low-stock');
-export const getAllVariants = () => API.get('/products/variants');
-export const adjustStock = (variantId, delta) => API.patch(`/products/variants/${variantId}/stock`, { delta });
-export const updateVariantThreshold = (variantId, low_stock_threshold) => API.patch(`/products/variants/${variantId}/stock`, { low_stock_threshold });
+export const getAllVariants = (params = {}) => API.get('/products/variants', { params });
+export const adjustStock = (variantId, delta, reason) => API.patch(`/products/variants/${variantId}/stock`, { delta, reason });
+export const updateVariantThreshold = (variantId, low_stock_threshold) =>
+    API.patch(`/products/variants/${variantId}/stock`, { delta: 0, low_stock_threshold });
 export const setMainVariant = (variantId) => API.patch(`/products/variants/${variantId}/set-main`);
+export const getStockHistory = (variantId) => API.get(`/products/variants/${variantId}/history`);
+export const getAllStockHistory = (limit = 50) => API.get('/products/variants/history', { params: { limit } });
 
 // ─── Categories ─────────────────────────────────────────
 export const getCategories = () => API.get('/categories');

@@ -88,27 +88,33 @@ const getProductReport = async ({ startDate, endDate }) => {
     const dClauses = dateRange("o", startDate, endDate, params);
     const dateWhere = dClauses.length ? `AND ${dClauses.join(" AND ")}` : "";
 
-    const [topSelling, lowSelling, staleProducts] = await Promise.all([
-        // Top 10 best sellers
-        db.query(
-            `SELECT
-                p.product_id,
-                p.name AS product_name,
-                c.name AS category_name,
-                SUM(oi.quantity)            AS units_sold,
-                SUM(oi.price * oi.quantity) AS revenue,
-                MIN(pv.price)               AS min_price,
-                MAX(pv.price)               AS max_price,
-                SUM(pv.stock_quantity)      AS stock_remaining
-             FROM order_items oi
-             JOIN product_variants pv ON oi.variant_id = pv.variant_id
-             JOIN products p ON pv.product_id = p.product_id
-             LEFT JOIN categories c ON p.category_id = c.category_id
-             JOIN orders o ON oi.order_id = o.order_id
-             WHERE 1=1 ${dateWhere}
-             GROUP BY p.product_id, p.name, c.name
-             ORDER BY units_sold DESC LIMIT 10`, params
-        ),
+    // Shared product query template
+    const productQuery = (orderBy, limit = 10) => `
+        SELECT
+            p.product_id,
+            p.name AS product_name,
+            c.name AS category_name,
+            SUM(oi.quantity)            AS units_sold,
+            SUM(oi.price * oi.quantity) AS revenue,
+            MIN(pv.price)               AS min_price,
+            MAX(pv.price)               AS max_price,
+            SUM(pv.stock_quantity)      AS stock_remaining
+         FROM order_items oi
+         JOIN product_variants pv ON oi.variant_id = pv.variant_id
+         JOIN products p ON pv.product_id = p.product_id
+         LEFT JOIN categories c ON p.category_id = c.category_id
+         JOIN orders o ON oi.order_id = o.order_id
+         WHERE 1=1 ${dateWhere}
+         GROUP BY p.product_id, p.name, c.name
+         ORDER BY ${orderBy} DESC LIMIT ${limit}
+    `;
+
+    const [topSelling, topByRevenue, lowSelling, staleProducts] = await Promise.all([
+        // Top 10 by units sold
+        db.query(productQuery("units_sold", 10), params),
+
+        // Top 10 by revenue (฿)
+        db.query(productQuery("revenue", 10), params),
 
         // Low selling (products with < 5 sales in period)
         db.query(
@@ -152,11 +158,13 @@ const getProductReport = async ({ startDate, endDate }) => {
     ]);
 
     return {
-        top_selling: topSelling.rows,
+        top_selling: topSelling.rows,       // Ranked by units sold
+        top_by_revenue: topByRevenue.rows,  // Ranked by revenue (฿)
         low_selling: lowSelling.rows,
         stock_detail: staleProducts.rows,
     };
 };
+
 
 // ─── 3. INVENTORY REPORT ──────────────────────────────────────────────────────
 const getInventoryReport = async () => {

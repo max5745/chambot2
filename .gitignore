@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json (Standard practice is to track this for consistent installs)
+
 
 # Backend Environment
 backend/.env

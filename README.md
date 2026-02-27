@@ -4,11 +4,12 @@
 
 ## 🚀 คุณสมบัติเด่น (Features)
 - **Admin Dashboard**: แดชบอร์ดมืดดีไซน์พรีเมียม (Dark Theme) พร้อมกราฟรายได้และสถิติเรียลไทม์
-- **Product Management**: จัดการสินค้า, หมวดหมู่ และสต็อกสินค้าพร้อมระบบแจ้งเตือนสินค้าใกล้หมด
+- **Product & Stock Management**: ระบบจัดการสินค้าและสต็อกแบบ MVC (Product, Variant, Stock services) พร้อมระบบ Inventory Transactions และแจ้งเตือนสินค้าใกล้หมด
 - **Order Tracking**: ระบบติดตามสถานะคำสั่งซื้อแบบ Pipeline
-- **Supabase Integration**: ฐานข้อมูลประสิทธิภาพสูงและ Scalable
-- **OCR Import**: นำเข้าข้อมูลสินค้าจากรูปภาพใบเสร็จอัตโนมัติ (Coming Soon)
-- **System Flowcharts**: [แผนผังการทำงานของระบบทั้งหมด](FLOWCHARTS.md) (Shopping, Admin, Auth, OCR, Inventory)
+- **Supabase Integration**: ฐานข้อมูลประสิทธิภาพสูง เชื่อมต่อผ่าน pg pool
+- **OCR Import**: นำเข้าข้อมูลสินค้าจากรูปภาพใบเสร็จอัตโนมัติ
+- **System Architecture**: [แผนผังการทำงานและการไหลของข้อมูล](FLOWCHARTS.md)
+
 
 ---
 

@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import './MyOrdersPage.css';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -26,7 +26,7 @@ const StatusBadge = ({ status }) => {
 };
 
 export default function MyOrdersPage() {
-    const { user, token } = useContext(AuthContext);
+    const { user, token } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);

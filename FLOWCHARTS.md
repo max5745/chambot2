@@ -4,6 +4,56 @@
 
 ---
 
+## 0. Context Diagram — ภาพรวมระบบ (Level 0 DFD)
+แสดงระบบ Chambot ในฐานะกระบวนการเดียว พร้อม External Entities ทั้งหมดที่โต้ตอบกับระบบ
+
+```mermaid
+flowchart LR
+    %% ── External Entities ──
+    CUST[\"👤 ลูกค้า\\n(Customer)\"]
+    ADMIN[\"🛡️ ผู้ดูแลระบบ\\n(Admin)\"]
+    SMS[\"📱 SMS Gateway\\n(OTP Provider)\"]
+    OCR[\"🔍 OCR Service\\n(Image Processing)\"]
+    SHIP[\"🚚 บริษัทขนส่ง\\n(Shipping)\"]
+
+    %% ── System ──
+    SYS[\"⚙️ ระบบ CHAMBOT\\n━━━━━━━━━━━━━━━━━\\nFrontend · Backend API\\nMySQL Database\"]
+
+    %% ── Customer ↔ System ──
+    CUST -- \"เบอร์โทร / OTP\" --> SYS
+    CUST -- \"เลือกสินค้า / สั่งซื้อ\" --> SYS
+    CUST -- \"แนบสลิปชำระเงิน\" --> SYS
+    SYS -- \"JWT Token / สถานะออเดอร์\" --> CUST
+    SYS -- \"รายการสินค้า / ยืนยันคำสั่งซื้อ\" --> CUST
+
+    %% ── Admin ↔ System ──
+    ADMIN -- \"จัดการสินค้า / อนุมัติออเดอร์\" --> SYS
+    ADMIN -- \"อัปโหลดรูปสินค้า (OCR)\" --> SYS
+    ADMIN -- \"เลือกดูรายงาน\" --> SYS
+    SYS -- \"ข้อมูลรายงาน / สถิติ\" --> ADMIN
+    SYS -- \"รายการออเดอร์ Pending\" --> ADMIN
+
+    %% ── External Services ──
+    SYS -- \"ส่งคำขอ OTP\" --> SMS
+    SMS -- \"รหัส OTP\" --> CUST
+
+    SYS -- \"ส่งรูปภาพ\" --> OCR
+    OCR -- \"ข้อมูลข้อความ (ชื่อ, ราคา, จำนวน)\" --> SYS
+
+    SYS -- \"เลขพัสดุ / ข้อมูลจัดส่ง\" --> SHIP
+    SHIP -- \"สถานะการจัดส่ง\" --> SYS
+
+    %% ── Styles ──
+    style SYS fill:#1e3a5f,stroke:#4a90d9,color:#ffffff,font-size:14px
+    style CUST fill:#2d6a4f,stroke:#74c69d,color:#ffffff
+    style ADMIN fill:#6b2737,stroke:#e07b8a,color:#ffffff
+    style SMS  fill:#5a3e8a,stroke:#a78bfa,color:#ffffff
+    style OCR  fill:#7a4a1e,stroke:#f4a35a,color:#ffffff
+    style SHIP fill:#1a5276,stroke:#5dade2,color:#ffffff
+```
+
+---
+
 ## 1. กระบวนการซื้อสินค้า (Shopping Flow)
 แสดงขั้นตอนตั้งแต่ลูกค้าเข้าชมร้านค้าจนถึงสั่งซื้อสำเร็จ
 
@@ -91,6 +141,169 @@ graph LR
     F -- Props --> G[Stat Cards]
     F -- Chart Data --> H[Recharts Library]
     H --> I[Visual Dashboards]
+```
+
+---
+
+## 7. Data Flow Diagram — ภาพรวมระบบ (System-Level DFD)
+แสดงการไหลของข้อมูลระหว่าง ลูกค้า, ผู้ดูแลระบบ, Backend API, และ Database
+
+```mermaid
+flowchart TD
+    subgraph Actors["👥 ผู้ใช้งาน"]
+        U["👤 ลูกค้า (Customer)"]
+        A["🛡️ ผู้ดูแลระบบ (Admin)"]
+    end
+
+    subgraph Frontend["🖥️ Frontend (React)"]
+        FE_AUTH["หน้าล็อกอิน / OTP"]
+        FE_SHOP["หน้าร้านค้า / รายละเอียดสินค้า"]
+        FE_CART["หน้าตะกร้า / Checkout"]
+        FE_ORDER["หน้าติดตามคำสั่งซื้อ"]
+        FE_ADMIN["Admin Dashboard"]
+        FE_REPORT["หน้ารายงาน"]
+    end
+
+    subgraph API["⚙️ Backend API (Express.js)"]
+        API_AUTH["authRoutes\n/api/auth"]
+        API_PROD["productRoutes\n/api/products"]
+        API_CAT["categoryRoutes\n/api/categories"]
+        API_ORDER["orderRoutes\n/api/orders"]
+        API_ADMIN_ORD["adminOrderRoutes\n/api/admin/orders"]
+        API_REPORT["reportRoutes\n/api/reports"]
+    end
+
+    subgraph DB["🗄️ Database (MySQL)"]
+        DB_USERS[("users")]
+        DB_PROD[("products")]
+        DB_CAT[("categories")]
+        DB_ORDERS[("orders\norder_items")]
+        DB_PAYMENTS[("payments")]
+        DB_INVENTORY[("inventory_transactions")]
+    end
+
+    %% ลูกค้า → Frontend
+    U -->|"กรอกเบอร์ / OTP"| FE_AUTH
+    U -->|"เลือกสินค้า"| FE_SHOP
+    U -->|"จัดการตะกร้า"| FE_CART
+    U -->|"ติดตามสถานะ"| FE_ORDER
+
+    %% Admin → Frontend
+    A -->|"จัดการสินค้า / ออเดอร์"| FE_ADMIN
+    A -->|"ดูรายงาน"| FE_REPORT
+
+    %% Frontend → API
+    FE_AUTH <-->|"JWT Token / OTP"| API_AUTH
+    FE_SHOP <-->|"ข้อมูลสินค้า"| API_PROD
+    FE_SHOP <-->|"หมวดหมู่"| API_CAT
+    FE_CART <-->|"สร้าง / ยืนยัน Order"| API_ORDER
+    FE_ORDER <-->|"สถานะการจัดส่ง"| API_ORDER
+    FE_ADMIN <-->|"อัปเดต Order / สต็อก"| API_ADMIN_ORD
+    FE_REPORT <-->|"ข้อมูลรายงาน JSON"| API_REPORT
+
+    %% API → Database
+    API_AUTH <-->|"CRUD ผู้ใช้"| DB_USERS
+    API_PROD <-->|"CRUD สินค้า"| DB_PROD
+    API_CAT <-->|"CRUD หมวดหมู่"| DB_CAT
+    API_ORDER <-->|"สร้าง / ดึง Order"| DB_ORDERS
+    API_ORDER <-->|"บันทึกการชำระเงิน"| DB_PAYMENTS
+    API_ADMIN_ORD <-->|"อัปเดตสถานะ / สต็อก"| DB_ORDERS
+    API_ADMIN_ORD <-->|"บันทึกรายการสต็อก"| DB_INVENTORY
+    API_REPORT -->|"SQL Queries"| DB_ORDERS
+    API_REPORT -->|"SQL Queries"| DB_PROD
+    API_REPORT -->|"SQL Queries"| DB_PAYMENTS
+```
+
+---
+
+## 8. Data Flow — ฝั่งลูกค้า (Customer Data Flow)
+แสดงการไหลของข้อมูลตั้งแต่การยืนยันตัวตนจนถึงการสั่งซื้อสำเร็จ
+
+```mermaid
+sequenceDiagram
+    actor Customer as 👤 ลูกค้า
+    participant FE as React Frontend
+    participant API as Express API
+    participant DB as MySQL DB
+    participant SMS as SMS Gateway
+
+    Note over Customer,SMS: ── ขั้นตอนที่ 1: ยืนยันตัวตน ──
+    Customer->>FE: กรอกเบอร์โทรศัพท์
+    FE->>API: POST /api/auth/send-otp
+    API->>SMS: ส่งรหัส OTP
+    SMS-->>Customer: รับ SMS รหัส OTP
+    Customer->>FE: กรอก OTP 6 หลัก
+    FE->>API: POST /api/auth/verify-otp
+    API->>DB: ตรวจสอบ/สร้าง users record
+    DB-->>API: ข้อมูลผู้ใช้
+    API-->>FE: JWT Token
+    FE-->>Customer: เข้าสู่ระบบสำเร็จ
+
+    Note over Customer,DB: ── ขั้นตอนที่ 2: เลือกสินค้า ──
+    Customer->>FE: เปิดหน้าร้านค้า
+    FE->>API: GET /api/products
+    API->>DB: SELECT products + categories
+    DB-->>API: รายการสินค้า
+    API-->>FE: JSON สินค้าทั้งหมด
+    FE-->>Customer: แสดงสินค้า
+
+    Note over Customer,DB: ── ขั้นตอนที่ 3: สั่งซื้อ ──
+    Customer->>FE: กดชำระเงิน + แนบสลิป
+    FE->>API: POST /api/orders (JWT Header)
+    API->>DB: INSERT orders + order_items
+    API->>DB: INSERT payments (slip_url)
+    API->>DB: UPDATE products stock
+    DB-->>API: order_id
+    API-->>FE: { order_id, status: "pending" }
+    FE-->>Customer: หน้ายืนยันการสั่งซื้อ
+```
+
+---
+
+## 9. Data Flow — ฝั่งผู้ดูแลระบบ (Admin Data Flow)
+แสดงการไหลของข้อมูลสำหรับการจัดการสินค้า, ออเดอร์, และดูรายงาน
+
+```mermaid
+sequenceDiagram
+    actor Admin as 🛡️ Admin
+    participant FE as React Admin Panel
+    participant API as Express API
+    participant DB as MySQL DB
+    participant OCR as OCR Service
+
+    Note over Admin,DB: ── การจัดการสินค้าด้วย OCR ──
+    Admin->>FE: อัปโหลดรูปภาพสินค้า
+    FE->>API: POST /api/products/ocr
+    API->>OCR: ส่งรูปไปประมวลผล
+    OCR-->>API: ชื่อ, ราคา, จำนวน (Text)
+    API-->>FE: ข้อมูลที่ดึงได้ (JSON)
+    FE-->>Admin: แสดงฟอร์มพร้อมข้อมูล
+    Admin->>FE: ตรวจสอบ/แก้ไข แล้วกดบันทึก
+    FE->>API: POST /api/products
+    API->>DB: INSERT products
+    DB-->>API: product_id
+    API-->>FE: สินค้าสำเร็จ
+
+    Note over Admin,DB: ── การจัดการออเดอร์ ──
+    Admin->>FE: เปิดรายการออเดอร์ Pending
+    FE->>API: GET /api/admin/orders
+    API->>DB: SELECT orders + payments + users
+    DB-->>API: รายการออเดอร์พร้อมสลิป
+    API-->>FE: JSON รายการออเดอร์
+    Admin->>FE: อนุมัติ + ใส่เลข Tracking
+    FE->>API: PATCH /api/admin/orders/:id
+    API->>DB: UPDATE orders SET status, tracking_number
+    API->>DB: INSERT inventory_transactions
+    DB-->>API: สำเร็จ
+    API-->>FE: สถานะอัปเดตแล้ว
+
+    Note over Admin,DB: ── การดูรายงาน ──
+    Admin->>FE: เลือกประเภทรายงาน + ช่วงวันที่
+    FE->>API: GET /api/reports/sales?start=&end=
+    API->>DB: Complex SQL JOIN (orders, products, payments)
+    DB-->>API: Aggregated Data
+    API-->>FE: JSON สถิติและตัวเลข
+    FE-->>Admin: แสดงกราฟและสรุปผล (Recharts)
 ```
 
 ---

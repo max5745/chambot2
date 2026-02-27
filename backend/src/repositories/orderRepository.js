@@ -161,7 +161,7 @@ const getStatus = async (id) => {
 };
 
 // ─── Create Order (transaction) ───────────────────────────────────────────────
-const createOrder = async ({ user_id, items, total_amount, payment_method, address }) => {
+const createOrder = async ({ user_id, items, total_amount, payment_method, address_id, address }) => {
     await db.query("BEGIN");
     try {
         const orderRes = await db.query(
@@ -180,19 +180,34 @@ const createOrder = async ({ user_id, items, total_amount, payment_method, addre
                 [item.quantity, item.variant_id]
             );
         }
+
         await db.query(
             "INSERT INTO payments (order_id, method, status) VALUES ($1, $2, 'pending')",
             [newOrder.order_id, payment_method]
         );
+
+        // Resolve address_id — use provided id or create ad-hoc address
+        let resolvedAddressId = address_id || null;
+        if (!resolvedAddressId && address) {
+            // address is a plain text string from old flow — store as user_address
+            const addrRes = await db.query(
+                "INSERT INTO user_addresses (user_id, recipient_name, address_line) VALUES ($1, $2, $3) RETURNING address_id",
+                [user_id, null, address]
+            );
+            resolvedAddressId = addrRes.rows[0].address_id;
+        }
+
         await db.query(
-            "INSERT INTO shipments (order_id, address, status) VALUES ($1, $2, 'preparing')",
-            [newOrder.order_id, address]
+            "INSERT INTO shipments (order_id, address_id, status) VALUES ($1, $2, 'preparing')",
+            [newOrder.order_id, resolvedAddressId]
         );
+
         // Log initial status
         await db.query(
             "INSERT INTO order_status_logs (order_id, status, changed_by, note) VALUES ($1, 'pending', 'system', 'Order created')",
             [newOrder.order_id]
         );
+
         await db.query("COMMIT");
         return newOrder;
     } catch (err) {
@@ -200,5 +215,6 @@ const createOrder = async ({ user_id, items, total_amount, payment_method, addre
         throw err;
     }
 };
+
 
 module.exports = { findAll, findById, findByUserId, updateStatus, addStatusLog, getTimeline, getStatus, createOrder };

@@ -170,6 +170,83 @@ function SalesTab({ start, end, groupBy }) {
 }
 
 // ─── PRODUCTS TAB ─────────────────────────────────────────────────────────────
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function RankTable({ title, data, rankBy, valueKey, valueLabel, valueFormat, accentColor }) {
+    return (
+        <div className="rpt-chart-card">
+            <h3 className="rpt-chart-title">{title}</h3>
+            <table className="data-table rpt-table">
+                <thead>
+                    <tr>
+                        <th style={{ width: 32 }}>#</th>
+                        <th>สินค้า</th>
+                        <th>หมวดหมู่</th>
+                        <th style={{ textAlign: 'right', minWidth: 90 }}>{valueLabel}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.map((p, i) => (
+                        <tr key={p.product_id} style={{ background: i === 0 ? 'rgba(245,158,11,0.04)' : undefined }}>
+                            <td>
+                                <span style={{
+                                    fontWeight: 800,
+                                    fontSize: i < 3 ? 16 : 13,
+                                    color: i < 3 ? '#f59e0b' : 'var(--text-muted)'
+                                }}>
+                                    {i < 3 ? MEDALS[i] : i + 1}
+                                </span>
+                            </td>
+                            <td>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+                                    {p.product_name}
+                                </div>
+                                {p.stock_remaining !== undefined && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        คงเหลือ {num(p.stock_remaining)} ชิ้น
+                                    </div>
+                                )}
+                            </td>
+                            <td>
+                                {p.category_name
+                                    ? <span className="badge badge-cyan" style={{ fontSize: 11 }}>{p.category_name}</span>
+                                    : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                                    <span style={{ fontWeight: 700, color: accentColor, fontSize: 13 }}>
+                                        {valueFormat(p[valueKey])}
+                                    </span>
+                                    {/* Mini progress bar relative to top item */}
+                                    {data.length > 0 && (
+                                        <div style={{ width: 70, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+                                            <div style={{
+                                                width: `${Math.round((p[valueKey] / data[0][valueKey]) * 100)}%`,
+                                                height: '100%',
+                                                background: accentColor,
+                                                borderRadius: 2,
+                                                opacity: 0.7,
+                                                transition: 'width 0.4s ease'
+                                            }} />
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    {data.length === 0 && (
+                        <tr>
+                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+                                ไม่มีข้อมูลในช่วงที่เลือก
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 function ProductsTab({ start, end }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -184,67 +261,88 @@ function ProductsTab({ start, end }) {
 
     if (loading) return <Skeleton />;
     if (!data) return null;
-    const { top_selling, low_selling } = data;
+    const { top_selling = [], top_by_revenue = [], low_selling = [] } = data;
 
     return (
         <div className="rpt-tab-content">
+            {/* ── Top 10 dual tables ── */}
             <div className="rpt-two-col">
-                <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">🏆 สินค้าขายดี Top 10</h3>
-                    <table className="data-table rpt-table">
-                        <thead><tr><th>#</th><th>สินค้า</th><th>ขายได้</th><th>รายได้</th></tr></thead>
-                        <tbody>
-                            {top_selling.map((p, i) => (
-                                <tr key={p.product_id}>
-                                    <td style={{ fontWeight: 700, color: i < 3 ? '#f59e0b' : '#6b7280' }}>{i + 1}</td>
-                                    <td style={{ fontSize: 13 }}>{p.product_name}</td>
-                                    <td style={{ color: '#10b981', textAlign: 'right' }}>{num(p.units_sold)} ชิ้น</td>
-                                    <td style={{ color: '#6366f1', fontWeight: 600, textAlign: 'right' }}>{fmt(p.revenue)}</td>
-                                </tr>
-                            ))}
-                            {top_selling.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#6b7280' }}>ไม่มีข้อมูล</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">📉 สินค้าขายช้า</h3>
-                    <table className="data-table rpt-table">
-                        <thead><tr><th>สินค้า</th><th>ขายได้</th><th>คงเหลือ</th></tr></thead>
-                        <tbody>
-                            {low_selling.map(p => (
-                                <tr key={p.product_id}>
-                                    <td style={{ fontSize: 13 }}>{p.product_name}</td>
-                                    <td style={{ color: '#f59e0b', textAlign: 'right' }}>{num(p.units_sold)} ชิ้น</td>
-                                    <td style={{ textAlign: 'right' }}>{num(p.stock_remaining)}</td>
-                                </tr>
-                            ))}
-                            {low_selling.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', color: '#6b7280' }}>ไม่มีข้อมูล</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
+                <RankTable
+                    title="🏅 Top 10 — จำนวนชิ้นที่ขายได้"
+                    data={top_selling}
+                    valueKey="units_sold"
+                    valueLabel="จำนวน (ชิ้น)"
+                    valueFormat={v => `${num(v)} ชิ้น`}
+                    accentColor="#10b981"
+                />
+                <RankTable
+                    title="💰 Top 10 — ยอดขาย (บาท)"
+                    data={top_by_revenue}
+                    valueKey="revenue"
+                    valueLabel="ยอดขาย"
+                    valueFormat={v => fmt(v)}
+                    accentColor="#a5b4fc"
+                />
             </div>
 
+            {/* ── Bar chart: units sold ── */}
             <div className="rpt-chart-card">
-                <h3 className="rpt-chart-title">📊 ยอดขายสินค้า (กราฟ)</h3>
+                <h3 className="rpt-chart-title">📊 เปรียบเทียบจำนวนชิ้นขาย vs ยอดขาย (Top 10)</h3>
                 {top_selling.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={240}>
-                        <BarChart data={top_selling.slice(0, 10)}>
+                    <ResponsiveContainer width="100%" height={260}>
+                        <BarChart data={top_selling.slice(0, 10)} margin={{ left: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                            <XAxis dataKey="product_name" tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                            <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                            <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
-                                formatter={v => [num(v), 'จำนวน']} />
-                            <Bar dataKey="units_sold" radius={[4, 4, 0, 0]}>
-                                {top_selling.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Bar>
+                            <XAxis dataKey="product_name" tick={{ fill: '#9ca3af', fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={50} />
+                            <YAxis yAxisId="left" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fill: '#9ca3af', fontSize: 10 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
+                            <Tooltip
+                                contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
+                                itemStyle={{ fontSize: 13 }}
+                                formatter={(v, n) => n === 'units_sold' ? [`${num(v)} ชิ้น`, 'จำนวน'] : [fmt(v), 'ยอดขาย']}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
+                            <Bar yAxisId="left" dataKey="units_sold" name="จำนวน (ชิ้น)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar yAxisId="right" dataKey="revenue" name="ยอดขาย (฿)" fill="#6366f1" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : <p className="rpt-empty">ไม่มีข้อมูล</p>}
             </div>
+
+            {/* ── Low Selling ── */}
+            <div className="rpt-chart-card">
+                <h3 className="rpt-chart-title">📉 สินค้าขายช้า (ยอดขาย &lt; 5 ชิ้น)</h3>
+                <table className="data-table rpt-table">
+                    <thead>
+                        <tr>
+                            <th>สินค้า</th>
+                            <th>หมวดหมู่</th>
+                            <th style={{ textAlign: 'right' }}>ขายได้</th>
+                            <th style={{ textAlign: 'right' }}>คงเหลือ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {low_selling.map(p => (
+                            <tr key={p.product_id}>
+                                <td style={{ fontSize: 13 }}>{p.product_name}</td>
+                                <td>
+                                    {p.category_name
+                                        ? <span className="badge badge-cyan" style={{ fontSize: 11 }}>{p.category_name}</span>
+                                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                </td>
+                                <td style={{ color: '#f59e0b', textAlign: 'right', fontWeight: 600 }}>{num(p.units_sold)} ชิ้น</td>
+                                <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{num(p.stock_remaining)}</td>
+                            </tr>
+                        ))}
+                        {low_selling.length === 0 && (
+                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#10b981', padding: 24 }}>✅ ทุกสินค้ามียอดขายปกติ</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
+
 
 // ─── INVENTORY TAB ────────────────────────────────────────────────────────────
 function InventoryTab() {

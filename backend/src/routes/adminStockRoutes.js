@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const stockCtrl = require('../controllers/adminStockController');
-const { requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
+router.use(authenticate);
 router.use(requireAdmin);
 
 router.post('/restock', stockCtrl.restock);

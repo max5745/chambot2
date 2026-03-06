@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Package, Tag, ShoppingBag, Home, LogOut,
-    Store, ScanLine, Layers, BarChart2, Bell, Settings, ChevronRight
+    Store, ScanLine, Layers, BarChart2, Bell, ChevronRight, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getLowStockProducts } from '../../api';
@@ -58,6 +58,12 @@ const AdminLayout = () => {
             items: [
                 { to: '/admin/ocr', icon: <ScanLine size={17} />, label: 'OCR นำเข้า' },
             ]
+        },
+        {
+            label: 'ระบบ',
+            items: [
+                { to: '/admin/members', icon: <Users size={17} />, label: 'สมาชิก' },
+            ]
         }
     ];
 
@@ -71,6 +77,7 @@ const AdminLayout = () => {
         if (path.includes('orders')) return 'คำสั่งซื้อ';
         if (path.includes('reports')) return 'รายงาน';
         if (path.includes('ocr')) return 'OCR นำเข้า';
+        if (path.includes('members')) return 'จัดการสมาชิก';
         return 'Admin';
     };
 

@@ -8,7 +8,7 @@ import './ProductsPage.css';
 const formatPrice = (p) =>
     new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(p || 0);
 
-const emptyVariant = () => ({ sku: '', price: '', stock_quantity: 0, unit: '', image_url: '', low_stock_threshold: 5, is_main: false });
+const emptyVariant = () => ({ sku: '', price: '', stock_quantity: 0, unit: 'ชิ้น', image_url: '', low_stock_threshold: 5, is_main: false });
 const emptyProduct = () => ({ name: '', description: '', category_id: '', is_active: true, variants: [emptyVariant()] });
 
 /* ─── Threshold Adjuster ─── */
@@ -101,7 +101,15 @@ const ProductsPage = () => {
         }));
     };
 
-    const openAdd = () => { setForm(emptyProduct()); setEditData(null); setModalOpen(true); };
+    const openAdd = () => {
+        // Only reset form if we were previously in edit mode
+        // (so draft data from a previous openAdd attempt is preserved)
+        if (editData !== null) {
+            setForm(emptyProduct());
+        }
+        setEditData(null);
+        setModalOpen(true);
+    };
     const openEdit = (p) => {
         setForm({ name: p.product_name || p.name, description: p.description || '', category_id: p.category_id || '', is_active: p.is_active, variants: [] });
         setEditData(p);
@@ -158,6 +166,8 @@ const ProductsPage = () => {
                 toast.success('เพิ่มสินค้าสำเร็จ');
             }
             setModalOpen(false);
+            // Reset form to empty draft only after successful save
+            setForm(emptyProduct());
             fetchAll();
         } catch { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่'); }
         finally { setSaving(false); }
@@ -326,18 +336,28 @@ const ProductsPage = () => {
                                             <div className="prod-num-box">
                                                 <div className="prod-num-label">💰 ราคาขาย</div>
                                                 <div className="prod-num-val" style={{ color: '#AA5DC6' }}>
-                                                    {formatPrice(selectedProduct.min_price)}
-                                                    {selectedProduct.max_price && selectedProduct.max_price !== selectedProduct.min_price
-                                                        && <span style={{ fontSize: 16 }}> – {formatPrice(selectedProduct.max_price)}</span>}
+                                                    {(() => {
+                                                        const prices = selectedProduct.variants?.map(v => Number(v.price)).filter(p => p > 0) || [];
+                                                        if (prices.length === 0) return formatPrice(selectedProduct.min_price || 0);
+                                                        const minP = Math.min(...prices);
+                                                        const maxP = Math.max(...prices);
+                                                        return minP === maxP
+                                                            ? formatPrice(minP)
+                                                            : <>{formatPrice(minP)}<span style={{ fontSize: 16 }}> – {formatPrice(maxP)}</span></>;
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div className="prod-num-box">
-                                                <div className="prod-num-label">📦 สต็อกคงเหลือ</div>
+                                                <div className="prod-num-label">📦 สต็อกรวมทั้งหมด</div>
                                                 <div className="prod-num-val">
-                                                    {selectedProduct.total_stock ?? 0}
-                                                    <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginLeft: 6 }}>
-                                                        {selectedProduct.variants?.[0]?.unit || 'ชิ้น'}
-                                                    </span>
+                                                    {(() => {
+                                                        const totalStock = selectedProduct.variants?.reduce((sum, v) => sum + (Number(v.stock_quantity) || 0), 0)
+                                                            ?? selectedProduct.total_stock ?? 0;
+                                                        // Find most common unit among variants
+                                                        const units = selectedProduct.variants?.map(v => v.unit).filter(Boolean) || [];
+                                                        const unit = units.length > 0 ? units[0] : 'ชิ้น';
+                                                        return <>{totalStock}<span style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginLeft: 6 }}>{unit}</span></>;
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -463,9 +483,6 @@ const ProductsPage = () => {
                             <div className="variants-section">
                                 <div className="variants-header">
                                     <h4>ตัวเลือกสินค้า</h4>
-                                    <button type="button" className="btn btn-outline btn-sm" onClick={addVariant}>
-                                        <Plus size={14} /> เพิ่มตัวเลือก
-                                    </button>
                                 </div>
                                 {form.variants.map((v, i) => (
                                     <div key={i} className="variant-form-card">
@@ -487,7 +504,7 @@ const ProductsPage = () => {
                                         </div>
                                         <div className="variant-form-grid">
                                             <div className="input-group">
-                                                <label className="input-label">รหัสสินค้า (SKU)</label>
+                                                <label className="input-label">คุณลักษณะสินค้า</label>
                                                 <input className="input-field" value={v.sku}
                                                     onChange={e => handleVarChange(i, 'sku', e.target.value)}
                                                     placeholder="SKU-001" />
@@ -530,9 +547,22 @@ const ProductsPage = () => {
                                                 </label>
                                             </div>
                                             {v.image_url && <img src={getImageUrl(v.image_url)} alt="preview" className="image-preview" />}
+                                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'rgba(255,255,255,0.28)', lineHeight: 1.6 }}>
+                                                📐 แนะนำขนาด <strong style={{ color: 'rgba(255,255,255,0.45)' }}>800×800 px</strong> ขึ้นไป, อัตราส่วน 1:1<br />
+                                                🖼️ รองรับไฟล์: <strong style={{ color: 'rgba(255,255,255,0.45)' }}>JPG, PNG, WEBP</strong> · ขนาดไม่เกิน 5 MB
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
+                                {/* ── Add Variant button at bottom of list ── */}
+                                <button
+                                    type="button"
+                                    className="btn btn-outline btn-sm"
+                                    onClick={addVariant}
+                                    style={{ width: '100%', marginTop: 10, justifyContent: 'center' }}
+                                >
+                                    <Plus size={14} /> เพิ่มตัวเลือก
+                                </button>
                             </div>
 
                             <div className="modal-footer" style={{ padding: '16px 0 0', border: 'none' }}>

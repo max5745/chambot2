@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -73,10 +73,94 @@ function DateFilter({ start, end, onStart, onEnd, onReset, loading, groupBy, onG
     );
 }
 
-// ─── SALES TAB ────────────────────────────────────────────────────────────────
-function SalesTab({ start, end, groupBy }) {
+// ─── SALES TAB ─────────────────────────────────────────────────────────────────────────────────
+const CAT_COLORS = ['#f59e0b', '#6366f1', '#10b981', '#ec4899', '#06b6d4', '#f97316', '#8b5cf6', '#14b8a6'];
+
+function DrillDown({ period, groupBy, onClose }) {
+    const [drill, setDrill] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [sortBy, setSortBy] = useState('revenue'); // 'revenue' | 'units_sold'
+
+    // For hour groupBy, period is like "14:00", map back to start/end of that day's hour
+    // We pass the outer start/end in via props and just re-fetch by the period label
+    useEffect(() => {
+        setLoading(true);
+        getSalesReport({ startDate: period.start, endDate: period.end, groupBy: 'day' })
+            .then(r => setDrill(r.data.data))
+            .catch(() => toast.error('โหลดรายละเอียดไม่สำเร็จ'))
+            .finally(() => setLoading(false));
+    }, [period.start, period.end]);
+
+    const products = drill?.by_product || [];
+    const sorted = [...products].sort((a, b) => Number(b[sortBy]) - Number(a[sortBy]));
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }} onClick={onClose}>
+            <div style={{
+                background: '#181926', borderRadius: '20px 20px 0 0',
+                width: '100%', maxWidth: 640, maxHeight: '80vh',
+                overflow: 'auto', padding: 24,
+                boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+            }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
+                            📅 {period.label}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>สินค้าขายดีในช่วงนี้</div>
+                    </div>
+                    <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
+                </div>
+
+                {/* Sort toggle */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                    {[['revenue', '💰 ยอดขาย'], ['units_sold', '📦 จำนวน']].map(([k, l]) => (
+                        <button key={k}
+                            className={`btn btn-sm ${sortBy === k ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setSortBy(k)}>{l}</button>
+                    ))}
+                </div>
+
+                {loading ? <Skeleton h={200} /> : sorted.length === 0
+                    ? <p className="rpt-empty">ไม่มีข้อมูลสินค้า</p>
+                    : sorted.map((p, i) => {
+                        const val = Number(p[sortBy] || 0);
+                        const max = Number(sorted[0][sortBy] || 1);
+                        return (
+                            <div key={p.product_id} style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            }}>
+                                <span style={{ fontSize: 15, minWidth: 24, color: i < 3 ? '#f59e0b' : '#6b7280', fontWeight: 700 }}>
+                                    {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}`}
+                                </span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{p.product_name}</div>
+                                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 4 }}>
+                                        <div style={{ width: `${(val / max * 100).toFixed(0)}%`, height: '100%', background: CAT_COLORS[i % CAT_COLORS.length], borderRadius: 2 }} />
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right', minWidth: 80 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: sortBy === 'revenue' ? '#10b981' : '#6366f1' }}>
+                                        {sortBy === 'revenue' ? fmt(val) : `${num(val)} ชิ้น`}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                }
+            </div>
+        </div>
+    );
+}
+
+function SalesTab({ start, end, groupBy, onDrillDay }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [drill, setDrill] = useState(null); // { start, end, label } for DrillDown
 
     useEffect(() => {
         setLoading(true);
@@ -88,83 +172,181 @@ function SalesTab({ start, end, groupBy }) {
 
     if (loading) return (<><Skeleton /><Skeleton h={200} /></>);
     if (!data) return null;
-    const { summary, by_period, by_product, by_category } = data;
+    const { summary, by_period, by_category } = data;
+
+    const totalRev = by_category.reduce((s, c) => s + Number(c.revenue || 0), 0);
+
+    // Build period label for drill-down
+    const getDrillPeriod = (row) => {
+        const date = row._date || row.period; // _date is actual ISO date; period may be display label
+        if (groupBy === 'hour') return { start, end, label: `${start} เวลา ${row.period}` };
+        return { start: date, end: date, label: date };
+    };
+
+    const PERIOD_LABEL = { hour: 'ชั่วโมง', day: 'วัน', week: 'สัปดาห์', month: 'เดือน' };
+
+    // Zero-fill helper: generate full sequence of expected period keys
+    const TH_DOW_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+    const fillPeriods = () => {
+        const map = Object.fromEntries(by_period.map(r => [r.period, r]));
+        const zero = { revenue: 0, orders: 0 };
+
+        if (groupBy === 'hour') {
+            return Array.from({ length: 24 }, (_, h) => {
+                const key = String(h).padStart(2, '0') + ':00';
+                return {
+                    period: key, _date: start,
+                    ...(map[key] ? { revenue: Number(map[key].revenue || 0), orders: Number(map[key].orders || 0) } : zero)
+                };
+            });
+        }
+        if (groupBy === 'week') {
+            // Show exactly 7 days Mon–Sun, labels as จ./อ./พ./พฤ./ศ./ส./อา.
+            const days = [];
+            const cur = new Date(start + 'T00:00:00');
+            const last = new Date(end + 'T00:00:00');
+            while (cur <= last) {
+                const isoDate = toISO(cur);
+                const dayName = TH_DOW_SHORT[cur.getDay()];
+                const lookupKey = isoDate; // in week mode backend groups by day
+                days.push({
+                    period: dayName, _date: isoDate,
+                    ...(map[lookupKey] ? { revenue: Number(map[lookupKey].revenue || 0), orders: Number(map[lookupKey].orders || 0) } : zero)
+                });
+                cur.setDate(cur.getDate() + 1);
+            }
+            return days;
+        }
+        if (groupBy === 'day' || groupBy === 'month') {
+            // Show all days in range; label = day number
+            const days = [];
+            const cur = new Date(start + 'T00:00:00');
+            const last = new Date(end + 'T00:00:00');
+            while (cur <= last) {
+                const isoDate = toISO(cur);
+                const lookupKey = isoDate; // day groupBy: period is YYYY-MM-DD
+                days.push({
+                    period: String(cur.getDate()), _date: isoDate,
+                    ...(map[lookupKey] ? { revenue: Number(map[lookupKey].revenue || 0), orders: Number(map[lookupKey].orders || 0) } : zero)
+                });
+                cur.setDate(cur.getDate() + 1);
+            }
+            return days;
+        }
+        return by_period.map(r => ({ ...r, _date: r.period }));
+    };
+    const chartData = fillPeriods();
 
     return (
         <div className="rpt-tab-content">
-            {/* Summary cards */}
+            {/* Summary */}
             <div className="rpt-stat-grid">
                 <StatCard label="รายได้รวม" value={fmt(summary.total_revenue)} accent="#10b981" />
                 <StatCard label="คำสั่งซื้อทั้งหมด" value={num(summary.total_orders)} accent="#6366f1" />
-                <StatCard label="ค่าเฉลี่ย/ออเดอร์" value={fmt(summary.avg_order_value)} accent="#f59e0b" />
+                <StatCard label="เฉลี่ย/ออเดอร์" value={fmt(summary.avg_order_value)} accent="#f59e0b" />
             </div>
 
-            {/* Revenue by period */}
+            {/* Bar chart */}
             <div className="rpt-chart-card">
-                <h3 className="rpt-chart-title">📈 รายได้ตามช่วงเวลา</h3>
-                {by_period.length === 0
+                <h3 className="rpt-chart-title">
+                    📊 ยอดขายราย{PERIOD_LABEL[groupBy]}
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
+                        {groupBy === 'hour' ? 'กดแต่ละแท่งเพื่อดูสินค้า' : 'กดแต่ละวันเพื่อดูยอดขายรายชั่วโมง'}
+                    </span>
+                </h3>
+                {chartData.length === 0
                     ? <p className="rpt-empty">ไม่มีข้อมูลในช่วงที่เลือก</p>
                     : (
-                        <ResponsiveContainer width="100%" height={260}>
-                            <LineChart data={by_period}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                        <ResponsiveContainer width="100%" height={240}>
+                            <BarChart data={chartData} margin={{ bottom: 8 }}
+                                onClick={(e) => {
+                                    if (e && e.activePayload && e.activePayload[0]) {
+                                        const row = e.activePayload[0].payload;
+                                        if (groupBy === 'hour') {
+                                            // Hour mode: show product bottom-sheet for the whole day
+                                            setDrill(getDrillPeriod(row));
+                                        } else {
+                                            // Week/Month/Day mode: drill-through to daily view
+                                            onDrillDay && onDrillDay(row._date || row.period);
+                                        }
+                                    }
+                                }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                                 <XAxis dataKey="period" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
                                 <Tooltip
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)', radius: 6 }}
                                     contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                                     itemStyle={{ fontSize: 13 }}
-                                    formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v), n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                    formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                    labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}
                                 />
-                                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={false} name="revenue" />
-                                <Line type="monotone" dataKey="orders" stroke="#6366f1" strokeWidth={2} dot={false} name="orders" />
-                            </LineChart>
+                                <Bar dataKey="revenue" name="revenue" radius={[6, 6, 0, 0]}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    {chartData.map((row, i) => {
+                                        const base = by_category.length > 0 ? CAT_COLORS[0] : '#6366f1';
+                                        const opacity = Number(row.revenue) > 0 ? 1 : 0.22;
+                                        return <Cell key={i} fill={base} fillOpacity={opacity} />;
+                                    })}
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
                     )}
             </div>
 
-            <div className="rpt-two-col">
-                {/* Revenue by product */}
+            {/* Category breakdown */}
+            {by_category.length > 0 && (
                 <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">🛍️ รายได้ตามสินค้า (Top 10)</h3>
-                    {by_product.length === 0
-                        ? <p className="rpt-empty">ไม่มีข้อมูล</p>
-                        : (
-                            <ResponsiveContainer width="100%" height={260}>
-                                <BarChart data={by_product.slice(0, 10)} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                                    <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 10 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
-                                    <YAxis type="category" dataKey="product_name" tick={{ fill: '#9ca3af', fontSize: 10 }} width={120} />
-                                    <Tooltip contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-                                        itemStyle={{ fontSize: 13 }}
-                                        formatter={v => [fmt(v), 'รายได้']} />
-                                    <Bar dataKey="revenue" fill="#6366f1" radius={[0, 4, 4, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                </div>
+                    <h3 className="rpt-chart-title">🏷️ หมวดหมู่สินค้า</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                        {by_category.map((c, i) => {
+                            const rev = Number(c.revenue || 0);
+                            const share = totalRev > 0 ? (rev / totalRev) * 100 : 0;
+                            return (
+                                <div key={c.category_id || i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    {/* Color dot */}
+                                    <div style={{
+                                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                                        background: CAT_COLORS[i % CAT_COLORS.length] + '22',
+                                        border: `2px solid ${CAT_COLORS[i % CAT_COLORS.length]}44`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 18,
+                                    }}>{'🏷️'}</div>
 
-                {/* Revenue by category */}
-                <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">🏷️ รายได้ตามหมวดหมู่</h3>
-                    {by_category.length === 0
-                        ? <p className="rpt-empty">ไม่มีข้อมูล</p>
-                        : (
-                            <ResponsiveContainer width="100%" height={260}>
-                                <PieChart>
-                                    <Pie data={by_category} dataKey="revenue" nameKey="category_name"
-                                        cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                        labelLine={false}>
-                                        {by_category.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-                                        itemStyle={{ fontSize: 13 }}
-                                        formatter={v => [fmt(v), 'รายได้']} />
-                                    <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
+                                    {/* Name + bar */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {c.category_name}
+                                            </span>
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginLeft: 8, flexShrink: 0 }}>
+                                                {fmt(rev)}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                                                <div style={{
+                                                    width: `${share.toFixed(1)}%`, height: '100%',
+                                                    background: CAT_COLORS[i % CAT_COLORS.length],
+                                                    borderRadius: 3, transition: 'width 0.4s ease',
+                                                }} />
+                                            </div>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 62, textAlign: 'right' }}>
+                                                {c.order_count} รายการ &middot; {share.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Drill-down modal */}
+            {drill && <DrillDown period={drill} groupBy={groupBy} onClose={() => setDrill(null)} />}
         </div>
     );
 }
@@ -559,26 +741,167 @@ function FinancialTab({ start, end }) {
     );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Calendar helpers ───────────────────────────────────────────────────────────────────────────────
+const toISO = (d) => d.toISOString().slice(0, 10);
+const thDay = new Intl.DateTimeFormat('th-TH', { dateStyle: 'long' });
+const thMonth = new Intl.DateTimeFormat('th-TH', { year: 'numeric', month: 'long' });
+const thShort = new Intl.DateTimeFormat('th-TH', { day: '2-digit', month: 'short' });
+const getMon = (d) => { const dt = new Date(d); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return dt; };
+const isoSame = (a, b) => toISO(a) === toISO(b);
+const TH_DOW = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+
+const getPeriodFromDate = (type, sel) => {
+    if (type === 'day') {
+        const iso = toISO(sel);
+        return { start: iso, end: iso, groupBy: 'hour', label: thDay.format(sel) };
+    }
+    if (type === 'week') {
+        const mon = getMon(sel);
+        const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+        return {
+            start: toISO(mon), end: toISO(sun), groupBy: 'day',
+            label: `${thShort.format(mon)} – ${thShort.format(sun)}`
+        };
+    }
+    const first = new Date(sel.getFullYear(), sel.getMonth(), 1);
+    const last = new Date(sel.getFullYear(), sel.getMonth() + 1, 0);
+    return { start: toISO(first), end: toISO(last), groupBy: 'day', label: thMonth.format(sel) };
+};
+
+// ─── MiniCalendar component ──────────────────────────────────────────────────────────────────────
+function MiniCalendar({ type, selected, onSelect }) {
+    const [viewYear, setViewYear] = useState(selected.getFullYear());
+    const [viewMonth, setViewMonth] = useState(selected.getMonth());
+    const [showMonthPicker, setShowMonthPicker] = useState(type === 'month');
+
+    useEffect(() => { setShowMonthPicker(type === 'month'); }, [type]);
+
+    const today = new Date();
+    const mon = getMon(selected); // Monday of selected week
+
+    // Build day grid
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const startDow = (firstDay.getDay() + 6) % 7; // Mon=0
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startDow; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewYear, viewMonth, d));
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    const prevMonth = () => { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); } else setViewMonth(m => m - 1); };
+    const nextMonth = () => { if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); } else setViewMonth(m => m + 1); };
+
+    const isSelected = (d) => {
+        if (!d) return false;
+        if (type === 'day') return isoSame(d, selected);
+        if (type === 'week') return d >= mon && d <= new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+        return d.getMonth() === selected.getMonth() && d.getFullYear() === selected.getFullYear();
+    };
+    const isToday = (d) => d && isoSame(d, today);
+    const isFuture = (d) => d && d > today;
+
+    const CAL_STYLE = {
+        position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 999,
+        background: '#181926', border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 16, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+        minWidth: 280, userSelect: 'none',
+    };
+    const MONTH_NAMES = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+    if (showMonthPicker) return (
+        <div style={CAL_STYLE}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setViewYear(y => y - 1)}>&#8592;</button>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)' }}>{viewYear + 543}</span>
+                <button className="btn btn-secondary btn-sm"
+                    onClick={() => setViewYear(y => y + 1)}
+                    disabled={viewYear >= today.getFullYear()}>&#8594;</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                {MONTH_NAMES.map((name, i) => {
+                    const isFut = viewYear > today.getFullYear() || (viewYear === today.getFullYear() && i > today.getMonth());
+                    const isSel = selected.getMonth() === i && selected.getFullYear() === viewYear;
+                    return (
+                        <button key={i}
+                            disabled={isFut}
+                            style={{
+                                padding: '6px 2px', borderRadius: 8, fontSize: 12, border: 'none', cursor: isFut ? 'default' : 'pointer',
+                                background: isSel ? '#6366f1' : 'rgba(255,255,255,0.04)',
+                                color: isSel ? '#fff' : isFut ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.8)',
+                                fontWeight: isSel ? 700 : 400,
+                            }}
+                            onClick={() => { onSelect(new Date(viewYear, i, 1)); }}
+                        >{name}</button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={CAL_STYLE}>
+            {/* Month nav */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <button className="btn btn-secondary btn-sm" onClick={prevMonth}>&#8592;</button>
+                <span style={{ fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>
+                    {MONTH_NAMES[viewMonth]} {viewYear + 543}
+                </span>
+                <button className="btn btn-secondary btn-sm"
+                    onClick={nextMonth}
+                    disabled={viewYear === today.getFullYear() && viewMonth >= today.getMonth()}>&#8594;</button>
+            </div>
+            {/* DOW headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
+                {TH_DOW.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#6b7280', fontWeight: 600, padding: '2px 0' }}>{d}</div>)}
+            </div>
+            {/* Day cells */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+                {cells.map((d, i) => {
+                    const sel = d && isSelected(d);
+                    const tod = isToday(d);
+                    const fut = isFuture(d);
+                    return (
+                        <div key={i} onClick={() => d && !fut && onSelect(d)}
+                            style={{
+                                textAlign: 'center', padding: '5px 2px', borderRadius: 6, fontSize: 12,
+                                cursor: d && !fut ? 'pointer' : 'default',
+                                background: sel ? '#6366f1' :
+                                    (tod && !sel) ? 'rgba(99,102,241,0.2)' : 'transparent',
+                                color: sel ? '#fff' : fut ? 'rgba(255,255,255,0.2)' :
+                                    d ? 'rgba(255,255,255,0.85)' : 'transparent',
+                                fontWeight: tod || sel ? 700 : 400,
+                                outline: tod && !sel ? '1px solid rgba(99,102,241,0.5)' : 'none',
+                                transition: 'all 0.1s',
+                            }}
+                        >{d ? d.getDate() : ''}</div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function ReportPage() {
     const [tab, setTab] = useState('sales');
-    const [start, setStart] = useState('');
-    const [end, setEnd] = useState('');
-    const [groupBy, setGroupBy] = useState('day');
+    const [type, setType] = useState('day');
+    const [sel, setSel] = useState(new Date());
+    const [calOpen, setCalOpen] = useState(false);
+    const calRef = useRef(null);
 
-    const today = new Date().toISOString().slice(0, 10);
-    const thirtyDays = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-
+    // close cal on outside click
     useEffect(() => {
-        setStart(thirtyDays);
-        setEnd(today);
+        const h = (e) => { if (calRef.current && !calRef.current.contains(e.target)) setCalOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    const resetDates = () => { setStart(thirtyDays); setEnd(today); };
+    const changeType = (t) => { setType(t); setSel(new Date()); setCalOpen(false); };
+    const handleSelect = (d) => { setSel(d); setCalOpen(false); };
+
+    const { start, end, groupBy, label } = getPeriodFromDate(type, sel);
 
     return (
         <div className="rpt-page">
-            {/* Header */}
             <div className="admin-page-header">
                 <div>
                     <h1 className="admin-page-title">รายงาน</h1>
@@ -586,30 +909,53 @@ export default function ReportPage() {
                 </div>
             </div>
 
-            {/* Date Filter + Group by */}
-            <DateFilter
-                start={start} end={end} groupBy={groupBy}
-                onStart={setStart} onEnd={setEnd} onReset={resetDates}
-                onGroupBy={tab === 'sales' ? setGroupBy : null}
-            />
+            {/* Period Mode + Calendar picker */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+                {[['day', '◕ รายวัน'], ['week', '📆 รายสัปดาห์'], ['month', '📅 รายเดือน']].map(([k, l]) => (
+                    <button key={k}
+                        className={`btn btn-sm ${type === k ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ fontWeight: type === k ? 700 : 400, fontSize: 13 }}
+                        onClick={() => changeType(k)}>{l}</button>
+                ))}
 
-            {/* Tab Bar */}
+                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 18 }}>|</span>
+
+                {/* Calendar trigger */}
+                <div ref={calRef} style={{ position: 'relative' }}>
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        style={{
+                            fontSize: 13, fontWeight: 600, minWidth: 200,
+                            color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: 8
+                        }}
+                        onClick={() => setCalOpen(o => !o)}
+                    >
+                        📆 {label}
+                    </button>
+                    {calOpen && (
+                        <MiniCalendar type={type} selected={sel} onSelect={handleSelect} />
+                    )}
+                </div>
+            </div>
+
             <div className="rpt-tab-bar">
                 {TABS.map(t => {
-                    const Icon = t.icon;
-                    return (
-                        <button key={t.id}
-                            className={`rpt-tab-btn ${tab === t.id ? 'active' : ''}`}
-                            onClick={() => setTab(t.id)}>
-                            <Icon size={15} />
-                            {t.label}
+                    const Icon = t.icon; return (
+                        <button key={t.id} className={`rpt-tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+                            <Icon size={15} />{t.label}
                         </button>
                     );
                 })}
             </div>
 
-            {/* Tab Content */}
-            {tab === 'sales' && <SalesTab start={start} end={end} groupBy={groupBy} />}
+            {tab === 'sales' && <SalesTab start={start} end={end} groupBy={groupBy}
+                onDrillDay={(isoDate) => {
+                    // FIX: set sel first, then type — must NOT call changeType() which resets sel to today
+                    setSel(new Date(isoDate + 'T00:00:00'));
+                    setType('day');
+                    setCalOpen(false);
+                }}
+            />}
             {tab === 'products' && <ProductsTab start={start} end={end} />}
             {tab === 'inventory' && <InventoryTab />}
             {tab === 'customers' && <CustomersTab start={start} end={end} />}

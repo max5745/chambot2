@@ -9,6 +9,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const variantRoutes = require("./routes/variantRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const adminOrderRoutes = require("./routes/adminOrderRoutes");
+const adminUserRoutes = require("./routes/adminUserRoutes");
 const authRoutes = require("./routes/authRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const uploadController = require("./controllers/uploadController");
@@ -35,6 +36,8 @@ app.use("/api/admin/variants", require("./routes/adminVariantRoutes"));
 app.use("/api/admin/stock", require("./routes/adminStockRoutes"));
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/reports", reportRoutes);
+app.use("/api/admin/users", adminUserRoutes);
+app.use("/api/admin/embeddings", require("./routes/embeddingRoutes"));
 
 app.post("/api/upload", uploadController.upload.single("image"), uploadController.uploadImage);
 app.post("/api/ocr/scan", ocrController.upload.single("image"), ocrController.scanImage);

@@ -167,4 +167,35 @@ const getAllVariants = async ({ category } = {}) => {
     return r.rows;
 };
 
-module.exports = { getByProduct, addVariant, updateVariant, toggleVariant, getAllVariants };
+
+/**
+ * Set a variant as the main (primary) variant for its product.
+ * Clears is_main on all siblings, then sets the target.
+ */
+const setMain = async (variantId) => {
+    await db.query('BEGIN');
+    try {
+        // Get product_id of this variant
+        const res = await db.query('SELECT product_id FROM product_variants WHERE variant_id=$1', [variantId]);
+        if (res.rows.length === 0) throw Object.assign(new Error('Variant not found'), { status: 404 });
+        const { product_id } = res.rows[0];
+
+        // Clear existing main
+        await db.query('UPDATE product_variants SET is_main=false, updated_at=NOW() WHERE product_id=$1', [product_id]);
+
+        // Set new main
+        const r = await db.query(
+            'UPDATE product_variants SET is_main=true, updated_at=NOW() WHERE variant_id=$1 RETURNING *',
+            [variantId]
+        );
+
+        await db.query('COMMIT');
+        return r.rows[0];
+    } catch (e) {
+        await db.query('ROLLBACK');
+        throw e;
+    }
+};
+
+module.exports = { getByProduct, addVariant, updateVariant, toggleVariant, getAllVariants, setMain };
+

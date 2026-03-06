@@ -91,5 +91,13 @@ export const getInventoryReport = () => API.get('/admin/reports/inventory');
 export const getCustomerReport = (p = {}) => API.get('/admin/reports/customers', { params: p });
 export const getFinancialReport = (p = {}) => API.get('/admin/reports/financial', { params: p });
 
+// ─── Admin Members ──────────────────────────────────────
+export const getAdminMembers = () => API.get('/admin/users');
+export const suspendMember = (id) => API.patch(`/admin/users/${id}/suspend`);
+export const unsuspendMember = (id) => API.patch(`/admin/users/${id}/unsuspend`);
+export const initiateAddAdmin = (newAdminPhone) => API.post('/admin/users/add-admin/initiate', { newAdminPhone });
+export const confirmAddAdmin = (newAdminPhone, requesterOtp, newAdminOtp) =>
+    API.post('/admin/users/add-admin/confirm', { newAdminPhone, requesterOtp, newAdminOtp });
+
 export default API;
 

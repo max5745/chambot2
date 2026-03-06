@@ -21,6 +21,7 @@ import LoginPage from './pages/LoginPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import OrderTrackPage from './pages/OrderTrackPage';
 import ProfileSetupPage from './pages/ProfileSetupPage';
+import SuspendedPage from './pages/SuspendedPage';
 
 // Admin Pages
 import AdminLayout from './pages/admin/AdminLayout';
@@ -31,6 +32,7 @@ import OrdersPage from './pages/admin/OrdersPage';
 import OcrImportPage from './pages/admin/OcrImportPage';
 import StockPage from './pages/admin/StockPage';
 import ReportPage from './pages/admin/ReportPage';
+import MembersPage from './pages/admin/MembersPage';
 
 // CSS
 import './index.css';
@@ -83,6 +85,7 @@ function App() {
             <Route path="/orders/:id/track" element={<CustomerLayout><OrderTrackPage /></CustomerLayout>} />
             <Route path="/profile-setup" element={<ProfileSetupPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/suspended" element={<SuspendedPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
@@ -94,6 +97,7 @@ function App() {
               <Route path="ocr" element={<OcrImportPage />} />
               <Route path="stock" element={<StockPage />} />
               <Route path="reports" element={<ReportPage />} />
+              <Route path="members" element={<MembersPage />} />
             </Route>
 
             {/* Fallback */}

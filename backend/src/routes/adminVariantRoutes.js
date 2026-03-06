@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const variantCtrl = require('../controllers/adminVariantController');
-const { requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
+router.use(authenticate);
 router.use(requireAdmin);
 
 router.get('/products/:productId', variantCtrl.listVariants);

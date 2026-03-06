@@ -44,6 +44,24 @@ const LoginPage = () => {
         try {
             const res = await verifyOtp(cleaned, otp);
             const { token, user, isNewUser } = res.data;
+
+            // ── Suspended account check ───────────────────
+            if (user.is_active === false) {
+                // Store admin phone so SuspendedPage can display it
+                if (user.suspended_by_phone) {
+                    localStorage.setItem('chambot_suspended_by_phone', user.suspended_by_phone);
+                } else {
+                    localStorage.removeItem('chambot_suspended_by_phone');
+                }
+                // Still store user so SuspendedPage can show their phone
+                loginWithToken(user, token);
+                navigate('/suspended', { replace: true });
+                return;
+            }
+
+            // Clear any leftover suspension data
+            localStorage.removeItem('chambot_suspended_by_phone');
+
             loginWithToken(user, token);
             toast.success(`ยินดีต้อนรับ! 🎉`);
 

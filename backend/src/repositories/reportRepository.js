@@ -12,13 +12,16 @@ const dateRange = (alias, start, end, params) => {
 const getSalesReport = async ({ startDate, endDate, groupBy = "day" }) => {
     const params = [];
     const whereClauses = dateRange("o", startDate, endDate, params);
-    // Only count paid/delivered/shipped orders
-    whereClauses.push(`o.payment_status = 'paid' OR o.status IN ('paid','processing','shipped','in_transit','delivered')`);
+    // Only count paid/completed orders (payment_status = 'paid', or order is shipped/delivered)
+    whereClauses.push(`(o.payment_status = 'paid' OR o.status IN ('shipped','delivered'))`);
     const where = `WHERE ${whereClauses.join(" AND ")}`;
 
-    const groupFormat = groupBy === "month"
-        ? `TO_CHAR(o.created_at, 'YYYY-MM')`
-        : `TO_CHAR(o.created_at, 'YYYY-MM-DD')`;
+    // groupFormat: hour | day | week (ISO Mon start) | month
+    const groupFormat =
+        groupBy === "month" ? `TO_CHAR(o.created_at, 'YYYY-MM')` :
+            groupBy === "week" ? `TO_CHAR(DATE_TRUNC('week', o.created_at AT TIME ZONE 'Asia/Bangkok'), 'YYYY-MM-DD')` :
+                groupBy === "hour" ? `TO_CHAR(o.created_at AT TIME ZONE 'Asia/Bangkok', 'HH24:00')` :
+                    `TO_CHAR(o.created_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD')`;
 
     const [summary, byPeriod, byProduct, byCategory] = await Promise.all([
         // Summary stats
@@ -61,8 +64,9 @@ const getSalesReport = async ({ startDate, endDate, groupBy = "day" }) => {
             `SELECT
                 c.category_id,
                 c.name AS category_name,
-                SUM(oi.quantity)            AS units_sold,
-                SUM(oi.price * oi.quantity) AS revenue
+                COUNT(DISTINCT o.order_id)::int AS order_count,
+                SUM(oi.quantity)::int            AS units_sold,
+                SUM(oi.price * oi.quantity)      AS revenue
              FROM order_items oi
              JOIN product_variants pv ON oi.variant_id = pv.variant_id
              JOIN products p ON pv.product_id = p.product_id

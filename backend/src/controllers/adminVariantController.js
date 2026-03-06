@@ -48,4 +48,25 @@ const toggleVariant = async (req, res) => {
     } catch (e) { fail(res, e); }
 };
 
-module.exports = { listVariants, addVariant, updateVariant, toggleVariant };
+/**
+ * GET /admin/variants/all  (also served at /products/variants for StockPage)
+ */
+const getAllVariants = async (req, res) => {
+    try {
+        const data = await variantSvc.getAllVariants({ category: req.query.category });
+        ok(res, data);
+    } catch (e) { fail(res, e); }
+};
+
+/**
+ * PATCH /products/variants/:variantId/set-main
+ */
+const setMain = async (req, res) => {
+    try {
+        const data = await variantSvc.setMain(req.params.variantId);
+        ok(res, data);
+    } catch (e) { fail(res, e); }
+};
+
+
+module.exports = { listVariants, addVariant, updateVariant, toggleVariant, getAllVariants, setMain };

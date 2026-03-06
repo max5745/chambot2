@@ -1,4 +1,14 @@
 const db = require('../config/supabaseClient');
+const { embedProduct } = require('./embeddingService');
+
+// Fire-and-forget helper — never throws, never blocks response
+const triggerEmbed = (productId) => {
+    setImmediate(() =>
+        embedProduct(productId).catch(err =>
+            console.error(`[embedding] product #${productId}:`, err.message)
+        )
+    );
+};
 
 // ── Slug helper ──────────────────────────────────────────────────────────────
 const generateSlug = (name) =>
@@ -110,6 +120,8 @@ const create = async ({ name, description, category_id, is_active = true, varian
         }
 
         await db.query('COMMIT');
+        // ── Trigger embedding async (does not block response) ──
+        triggerEmbed(product.product_id);
         return product;
     } catch (e) {
         await db.query('ROLLBACK');
@@ -168,6 +180,8 @@ const update = async (id, { name, description, category_id, is_active, variants 
         }
 
         await db.query('COMMIT');
+        // ── Trigger embedding async (does not block response) ──
+        triggerEmbed(Number(id));
         return pr.rows[0];
     } catch (e) {
         await db.query('ROLLBACK');

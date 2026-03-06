@@ -51,7 +51,11 @@ const verifyOtp = async (req, res) => {
 
     try {
         const result = await db.query(
-            "SELECT * FROM users WHERE phone_number = $1 LIMIT 1", [phone]
+            `SELECT u.*, a.phone_number AS suspended_by_phone
+             FROM users u
+             LEFT JOIN users a ON a.id = u.suspended_by
+             WHERE u.phone_number = $1 LIMIT 1`,
+            [phone]
         );
         if (result.rows.length > 0) {
             user = result.rows[0];
@@ -85,6 +89,8 @@ const verifyOtp = async (req, res) => {
             phone: user.phone_number,
             role: user.role,
             full_name: user.full_name,
+            is_active: user.is_active,
+            suspended_by_phone: user.suspended_by_phone || null,
         },
     });
 };

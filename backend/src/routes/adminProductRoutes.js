@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const productCtrl = require('../controllers/adminProductController');
-const { requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
-// All product admin routes require admin role
+// All product admin routes require authentication + admin role
+router.use(authenticate);
 router.use(requireAdmin);
 
 router.get('/', productCtrl.listProducts);

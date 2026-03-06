@@ -1,16 +1,15 @@
 const repo = require("../repositories/orderRepository");
 
-// ─── Valid Status Transitions ─────────────────────────────────────────────────
+// ─── Valid Status Transitions (matches order_status ENUM in SCHEMA.sql) ──────
+// ENUM: 'pending','confirmed','shipped','delivered','cancelled'
 const TRANSITIONS = {
-    pending: ["paid", "cancelled"],
-    paid: ["processing", "refunded"],
-    processing: ["shipped", "cancelled"],
-    shipped: ["in_transit", "delivered"],
-    in_transit: ["delivered"],
-    delivered: ["refunded"],
+    pending: ["confirmed", "shipped", "cancelled"],
+    confirmed: ["shipped", "cancelled"],
+    shipped: ["delivered", "cancelled"],
+    delivered: [],
     cancelled: [],
-    refunded: [],
 };
+
 
 const validateTransition = (from, to) => {
     if (!TRANSITIONS[from]) throw new Error(`Unknown status: ${from}`);

@@ -30,7 +30,19 @@ const findAll = async ({ status, search, date_from, date_to, page = 1, limit = 2
     );
     params.push(limit, offset);
     const dataResult = await db.query(
-        `SELECT * FROM order_list_view ${where} ORDER BY order_id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        `SELECT olv.*,
+                cl.note         AS cancel_note,
+                cl.changed_by   AS cancelled_by
+         FROM order_list_view olv
+         LEFT JOIN LATERAL (
+             SELECT note, changed_by
+             FROM order_status_logs
+             WHERE order_id = olv.order_id AND status = 'cancelled'
+             ORDER BY created_at DESC
+             LIMIT 1
+         ) cl ON true
+         ${where.replace(/WHERE /i, 'WHERE olv.')}
+         ORDER BY olv.order_id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
         params
     );
 

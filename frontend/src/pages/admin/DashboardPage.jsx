@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Package, ShoppingBag, AlertTriangle, TrendingUp,
-    ArrowUp, ChevronRight, DollarSign, Users, Eye, Plus
+    Package, ShoppingBag, AlertTriangle,
+    ArrowUp, ChevronRight, DollarSign, Eye, Plus, Clock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getProducts, getOrders, getLowStockProducts } from '../../api';
+import { getProducts, getAdminOrders, getLowStockProducts } from '../../api';
 import ProductImage from '../../components/ProductImage';
 import './DashboardPage.css';
 
@@ -36,26 +36,34 @@ const DashboardPage = () => {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                const [prodRes, ordersRes, lowRes] = await Promise.allSettled([
-                    getProducts(), getOrders(), getLowStockProducts()
+                const [prodRes, adminOrdersRes, lowRes, pendingRes] = await Promise.allSettled([
+                    getProducts(),
+                    getAdminOrders({ limit: 6 }),
+                    getLowStockProducts(),
+                    getAdminOrders({ status: 'pending', limit: 1 }),
                 ]);
-                const products = prodRes.status === 'fulfilled' ? prodRes.value.data.data || [] : [];
-                const orders = ordersRes.status === 'fulfilled' ? ordersRes.value.data.data || [] : [];
-                const low = lowRes.status === 'fulfilled' ? lowRes.value.data.data || [] : [];
 
+                const products = prodRes.status === 'fulfilled' ? prodRes.value.data.data || [] : [];
+                const recentData = adminOrdersRes.status === 'fulfilled' ? adminOrdersRes.value.data : {};
+                const orders = recentData.data || [];
+                const orderTotal = recentData.total ?? orders.length;
+                const low = lowRes.status === 'fulfilled' ? lowRes.value.data.data || [] : [];
+                const pendingTotal = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.total ?? 0) : 0;
+
+                // Revenue: only 'delivered' orders (matches real ENUM: pending/shipped/delivered/cancelled)
                 const revenue = orders
-                    .filter(o => ['completed', 'delivered', 'shipped'].includes(o.status))
+                    .filter(o => o.status === 'delivered')
                     .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
                 setStats({
                     products: products.length,
-                    orders: orders.length,
+                    orders: orderTotal,
                     lowStock: low.length,
-                    pending: orders.filter(o => o.status === 'pending').length,
+                    pending: pendingTotal,
                     revenue,
                 });
                 setLowStockItems(low.slice(0, 6));
-                setRecentOrders(orders.slice(0, 6));
+                setRecentOrders(orders);
             } catch { }
             finally { setLoading(false); }
         };
@@ -210,20 +218,26 @@ const DashboardPage = () => {
                         </div>
                     ) : (
                         <table className="data-table">
-                            <thead><tr><th>Order</th><th>ลูกค้า</th><th>ยอด</th><th>สถานะ</th></tr></thead>
+                            <thead><tr><th>Order</th><th>ลูกค้า</th><th>ยอด</th><th>สถานะ</th><th>วันที่</th></tr></thead>
                             <tbody>
                                 {recentOrders.map(o => (
                                     <tr key={o.order_id}>
-                                        <td style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', fontSize: 13 }}>
-                                            #{o.order_id}
+                                        <td style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', fontSize: 12 }}>
+                                            #{String(o.order_id).slice(-8)}
                                         </td>
                                         <td style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
-                                            {o.customer_name || '—'}
+                                            {o.customer_name || o.phone_number || '—'}
                                         </td>
                                         <td style={{ color: '#a5b4fc', fontWeight: 600, fontSize: 13 }}>
                                             {fmt(o.total_amount || 0)}
                                         </td>
                                         <td><span className={getStatusBadge(o.status)}>{statusLabel[o.status] || o.status}</span></td>
+                                        <td style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                                            <Clock size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                            {o.created_at
+                                                ? new Date(o.created_at).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })
+                                                : '—'}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

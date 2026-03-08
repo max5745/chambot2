@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Package, Tag, ShoppingBag, Home, LogOut,
-    Store, ScanLine, Layers, BarChart2, Bell, ChevronRight, Users
+    Store, Layers, BarChart2, Bell, ChevronRight, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getLowStockProducts } from '../../api';
@@ -51,12 +51,6 @@ const AdminLayout = () => {
             items: [
                 { to: '/admin/orders', icon: <ShoppingBag size={17} />, label: 'คำสั่งซื้อ' },
                 { to: '/admin/reports', icon: <BarChart2 size={17} />, label: 'รายงาน & Analytics' },
-            ]
-        },
-        {
-            label: 'เครื่องมือ',
-            items: [
-                { to: '/admin/ocr', icon: <ScanLine size={17} />, label: 'OCR นำเข้า' },
             ]
         },
         {

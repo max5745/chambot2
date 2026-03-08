@@ -18,26 +18,22 @@ const fmtDate = (d) => {
 
 // ─── Status definitions (matches order_status ENUM in SCHEMA.sql) ───────────
 const STATUS = {
-    pending: { th: 'รอยืนยัน', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: <Clock size={13} /> },
-    confirmed: { th: 'ยืนยันแล้ว', color: '#06b6d4', bg: 'rgba(6,182,212,0.12)', icon: <CheckCircle2 size={13} /> },
-    shipped: { th: 'กำลังจัดส่ง 🛵', color: '#a855f7', bg: 'rgba(168,85,247,0.12)', icon: <Truck size={13} /> },
-    delivered: { th: 'ส่งถึงแล้ว ✅', color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: <CheckCircle2 size={13} /> },
-    cancelled: { th: 'ยกเลิก', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: <XCircle size={13} /> },
+    pending:   { th: 'รอยืนยัน',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',   icon: <Clock size={13} /> },
+    shipped:   { th: 'กำลังจัดส่ง 🛵',   color: '#a855f7', bg: 'rgba(168,85,247,0.12)',   icon: <Truck size={13} /> },
+    delivered: { th: 'ส่งถึงแล้ว ✅',    color: '#10b981', bg: 'rgba(16,185,129,0.12)',  icon: <CheckCircle2 size={13} /> },
+    cancelled: { th: 'ยกเลิก',           color: '#ef4444', bg: 'rgba(239,68,68,0.1)',     icon: <XCircle size={13} /> },
 };
 
 // Workflow: pending → shipped → delivered
 //           pending → cancelled (requires note)
 const QUICK_NEXT = {
     pending: [
-        { to: 'shipped', label: '✅ ยืนยัน / จัดส่ง', primary: true },
+        { to: 'shipped',   label: '✅ ยืนยัน / จัดส่ง', primary: true },
         { to: 'cancelled', label: '✖ ยกเลิก', primary: false, requireNote: true },
     ],
-    confirmed: [
-        { to: 'shipped', label: '🛵 เริ่มจัดส่ง', primary: true },
-    ],
     shipped: [
-        { to: 'delivered', label: '\u2705 \u0e2a\u0e48\u0e07\u0e16\u0e36\u0e07\u0e41\u0e25\u0e49\u0e27', primary: true },
-        { to: 'cancelled', label: '\u2716 \u0e22\u0e01\u0e40\u0e25\u0e34\u0e01\u0e01\u0e32\u0e23\u0e08\u0e31\u0e14\u0e2a\u0e48\u0e07', primary: false, requireNote: true },
+        { to: 'delivered', label: '✅ ส่งถึงแล้ว', primary: true },
+        { to: 'cancelled', label: '✖ ยกเลิกการจัดส่ง', primary: false, requireNote: true },
     ],
     delivered: [],
     cancelled: [],
@@ -54,11 +50,12 @@ function StatusBadge({ status }) {
 }
 
 // ─── Order Detail Drawer ───────────────────────────────────────────────────────
-function OrderDrawer({ orderId, onClose, onUpdated }) {
+function OrderDrawer({ orderId, onClose, onUpdated, focusNote = false }) {
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState('');
     const [note, setNote] = useState('');
+    const noteRef = useRef(null);
 
     const load = useCallback(() => {
         setLoading(true);
@@ -69,6 +66,16 @@ function OrderDrawer({ orderId, onClose, onUpdated }) {
     }, [orderId]);
 
     useEffect(() => { load(); }, [load]);
+
+    // Auto-focus note field when opened via cancel button
+    useEffect(() => {
+        if (focusNote && noteRef.current) {
+            setTimeout(() => {
+                noteRef.current?.focus();
+                noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 400);
+        }
+    }, [focusNote, loading]);
 
     const doUpdate = async (toStatus, requireNote = false) => {
         // Cancel requires a note
@@ -183,11 +190,19 @@ function OrderDrawer({ orderId, onClose, onUpdated }) {
 
                                 {/* Show note input: always for cancel, optional otherwise */}
                                 <input
+                                    ref={noteRef}
                                     className="input-field"
-                                    style={{ marginBottom: 10, fontSize: 13 }}
+                                    style={{
+                                        marginBottom: 10, fontSize: 13,
+                                        ...(focusNote ? {
+                                            borderColor: 'rgba(239,68,68,0.7)',
+                                            boxShadow: '0 0 0 3px rgba(239,68,68,0.15)',
+                                            animation: 'pulse 1.5s ease-in-out 2',
+                                        } : {})
+                                    }}
                                     placeholder={
                                         nextActions.some(a => a.requireNote)
-                                            ? 'หมายเหตุ (จำเป็นสำหรับการยกเลิก)'
+                                            ? '⚠️ กรุณาระบุหมายเหตุการยกเลิก (จำเป็น)'
                                             : 'หมายเหตุ (ไม่บังคับ)'
                                     }
                                     value={note}
@@ -227,10 +242,9 @@ function OrderCard({ order, onOpen, onQuickUpdate }) {
 
     const doQuick = async (e, toStatus, requireNote = false) => {
         e.stopPropagation();
-        // Cancel from card is handled inside drawer (needs note)
         if (requireNote) {
-            // Can't show note input on card — open drawer instead
-            toast('กรุณาเปิดรายละเอียดเพื่อระบุหมายเหตุการยกเลิก', { icon: 'ℹ️' });
+            // Open drawer and signal to focus/highlight the note field
+            onOpen({ id: order.order_id, focusNote: true });
             return;
         }
         setUpdating(toStatus);
@@ -244,7 +258,7 @@ function OrderCard({ order, onOpen, onQuickUpdate }) {
     };
 
     return (
-        <div className="ord-card" style={{ borderLeftColor: s.color }} onClick={() => onOpen(order.order_id)}>
+        <div className="ord-card" style={{ borderLeftColor: s.color }} onClick={() => onOpen({ id: order.order_id })}>
             {/* Top row */}
             <div className="ord-card-top">
                 <div className="ord-card-id">#{order.order_id}</div>
@@ -270,6 +284,24 @@ function OrderCard({ order, onOpen, onQuickUpdate }) {
                     <code className="tracking-code">{order.tracking_number}</code>
                 )}
             </div>
+
+            {/* Cancel info for cancelled orders */}
+            {order.status === 'cancelled' && (order.cancel_note || order.cancelled_by) && (
+                <div style={{
+                    marginTop: 8, padding: '8px 12px', borderRadius: 8,
+                    background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)',
+                    fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6,
+                }}>
+                    {order.cancel_note && (
+                        <div><span style={{ color: 'rgba(239,68,68,0.8)', fontWeight: 600 }}>เหตุผล: </span>{order.cancel_note}</div>
+                    )}
+                    {order.cancelled_by && (
+                        <div style={{ color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                            ยกเลิกโดย: {order.cancel_by_name || order.cancel_by_phone || order.cancelled_by}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Quick action buttons */}
             {nextActions.length > 0 && (
@@ -299,7 +331,7 @@ function OrderCard({ order, onOpen, onQuickUpdate }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 // Schema-valid statuses only
-const STATUS_TABS = ['', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const STATUS_TABS = ['', 'pending', 'shipped', 'delivered', 'cancelled'];
 const STATUS_TAB_LABELS = { '': 'ทั้งหมด', ...Object.fromEntries(Object.entries(STATUS).map(([k, v]) => [k, v.th])) };
 
 export default function OrdersPage() {
@@ -345,7 +377,8 @@ export default function OrdersPage() {
         <div>
             {drawerOrderId && (
                 <OrderDrawer
-                    orderId={drawerOrderId}
+                    orderId={drawerOrderId.id}
+                    focusNote={drawerOrderId.focusNote || false}
                     onClose={() => setDrawerOrderId(null)}
                     onUpdated={() => fetchOrders()}
                 />

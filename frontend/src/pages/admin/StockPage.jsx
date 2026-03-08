@@ -103,9 +103,15 @@ const AdjustModal = ({ variant, onClose, onSuccess }) => {
     const [reason, setReason] = useState('restock');
     const [saving, setSaving] = useState(false);
     const [summaryResult, setSummaryResult] = useState(null);
+    const [deltaError, setDeltaError] = useState(''); // validation error
 
     const handleSave = async () => {
-        if (delta === 0) { onClose(); return; }
+        // ★ UAT: Delta = 0 must be blocked with validation error — no API call
+        if (delta === 0) {
+            setDeltaError('กรุณาระบุจำนวนที่ต้องการปรับ (ต้องไม่ใช่ 0)');
+            return; // ★ no API call made
+        }
+        setDeltaError('');
         setSaving(true);
         const reasonLabel = REASONS.find(r => r.value === reason)?.label || reason;
         try {
@@ -186,12 +192,22 @@ const AdjustModal = ({ variant, onClose, onSuccess }) => {
                     {/* Delta Input */}
                     <div className="stock-delta-row">
                         <button type="button" className="btn btn-secondary stock-delta-btn"
-                            onClick={() => setDelta(d => d - 1)}><Minus size={16} /></button>
+                            onClick={() => { setDelta(d => d - 1); setDeltaError(''); }}><Minus size={16} /></button>
                         <input type="number" className="input-field stock-delta-input"
-                            value={delta} onChange={e => setDelta(Number(e.target.value))} />
+                            style={deltaError ? { borderColor: 'rgba(239,68,68,0.7)', boxShadow: '0 0 0 2px rgba(239,68,68,0.15)' } : {}}
+                            value={delta}
+                            onChange={e => { setDelta(Number(e.target.value)); setDeltaError(''); }} />
                         <button type="button" className="btn btn-secondary stock-delta-btn"
-                            onClick={() => setDelta(d => d + 1)}><Plus size={16} /></button>
+                            onClick={() => { setDelta(d => d + 1); setDeltaError(''); }}><Plus size={16} /></button>
                     </div>
+                    {deltaError && (
+                        <div style={{
+                            marginTop: -6, marginBottom: 8, fontSize: 12, color: '#f87171',
+                            display: 'flex', alignItems: 'center', gap: 5,
+                        }}>
+                            <AlertTriangle size={12} /> {deltaError}
+                        </div>
+                    )}
 
                     {/* Quick Presets */}
                     <div className="stock-preset-section">
@@ -313,7 +329,11 @@ const BulkModal = ({ selected, onClose, onSuccess }) => {
     };
 
     const handleSave = async () => {
-        if (affectedCount === 0) { onClose(); return; }
+        // ★ UAT: all deltas = 0 must be blocked — no API call
+        if (affectedCount === 0) {
+            toast.error('กรุณาระบุจำนวนที่ต้องการปรับอย่างน้อย 1 รายการ');
+            return; // no API call
+        }
         setSaving(true);
         const reasonLabel = REASONS.find(r => r.value === reason)?.label || reason;
         const results = [];

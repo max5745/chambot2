@@ -99,5 +99,11 @@ export const initiateAddAdmin = (newAdminPhone) => API.post('/admin/users/add-ad
 export const confirmAddAdmin = (newAdminPhone, requesterOtp, newAdminOtp) =>
     API.post('/admin/users/add-admin/confirm', { newAdminPhone, requesterOtp, newAdminOtp });
 
+// ─── Embeddings (Admin) ──────────────────────────────────────
+export const getEmbeddingStatus = () => API.get('/admin/embeddings/status');
+export const checkProductEmbedding = (productId) => API.get(`/admin/embeddings/check/${productId}`);
+export const embedSingleProduct = (productId) => API.post(`/admin/embeddings/embed/${productId}`);
+export const reindexEmbeddings = () => API.post('/admin/embeddings/reindex');
+
 export default API;
 

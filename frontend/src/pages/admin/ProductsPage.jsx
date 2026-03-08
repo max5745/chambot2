@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Upload, RotateCcw, Star, LayoutGrid, Table, Filter } from 'lucide-react';
-import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, uploadImage, getImageUrl, getProductById, setMainVariant, updateVariantThreshold } from '../../api';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Search, X, Upload, RotateCcw, Star, LayoutGrid, Table, Filter, ScanLine, CheckCircle, XCircle, Save, Edit3, AlertTriangle, ChevronRight, Cpu } from 'lucide-react';
+import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, uploadImage, getImageUrl, getProductById, setMainVariant, updateVariantThreshold, ocrScan, checkProductEmbedding, embedSingleProduct } from '../../api';
+import API from '../../api';
 import ProductImage from '../../components/ProductImage';
 import toast from 'react-hot-toast';
 import './ProductsPage.css';
@@ -49,6 +50,7 @@ const ProductsPage = () => {
     const [categories, setCategories] = useState([]);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
     const [viewMode, setViewMode] = useState('grid');
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -57,6 +59,22 @@ const ProductsPage = () => {
     const [form, setForm] = useState(emptyProduct());
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
+    const [embeddingInfo, setEmbeddingInfo] = useState(null);   // null | { has_embedding, updated_at, text_used }
+    const [embeddingLoading, setEmbeddingLoading] = useState(false);
+
+    // ── OCR State ──────────────────────────────────────────────────────────────
+    const [ocrOpen, setOcrOpen] = useState(false);
+    const [ocrStep, setOcrStep] = useState(1);
+    const [ocrImageFile, setOcrImageFile] = useState(null);
+    const [ocrPreview, setOcrPreview] = useState(null);
+    const [ocrScanning, setOcrScanning] = useState(false);
+    const [ocrItems, setOcrItems] = useState([]);
+    const [ocrStatuses, setOcrStatuses] = useState({});
+    const [ocrEditingIdx, setOcrEditingIdx] = useState(null);
+    const [ocrSaveResults, setOcrSaveResults] = useState({ done: 0, success: 0, failed: 0 });
+    const [ocrSaving, setOcrSaving] = useState(false);
+    const [ocrDragOver, setOcrDragOver] = useState(false);
+    const ocrFileRef = useRef();
 
     const fetchAll = async () => {
         setLoading(true);
@@ -73,13 +91,33 @@ const ProductsPage = () => {
     const handleSelectProduct = async (p) => {
         setDetailLoading(true);
         setSelectedProduct(p);
+        setEmbeddingInfo(null);
         try {
-            const res = await getProductById(p.product_id);
+            const [res, embRes] = await Promise.all([
+                getProductById(p.product_id),
+                checkProductEmbedding(p.product_id),
+            ]);
             setSelectedProduct(res.data.data);
+            setEmbeddingInfo(embRes.data.data);
         } catch {
             toast.error('ไม่สามารถโหลดข้อมูลสินค้าได้');
             setSelectedProduct(null);
         } finally { setDetailLoading(false); }
+    };
+
+    const handleReEmbed = async (productId) => {
+        setEmbeddingLoading(true);
+        try {
+            await embedSingleProduct(productId);
+            toast.success('ส่งคำขอ embed แล้ว — รอสักครู่');
+            // Re-check after 3s
+            setTimeout(async () => {
+                try {
+                    const r = await checkProductEmbedding(productId);
+                    setEmbeddingInfo(r.data.data);
+                } catch { } finally { setEmbeddingLoading(false); }
+            }, 3000);
+        } catch { toast.error('เกิดข้อผิดพลาด'); setEmbeddingLoading(false); }
     };
 
     const handleSetMain = async (variantId) => {
@@ -176,8 +214,76 @@ const ProductsPage = () => {
     const filtered = products.filter(p => {
         const matchSearch = (p.product_name || '').toLowerCase().includes(search.toLowerCase());
         const matchCategory = !filterCategory || String(p.category_id) === String(filterCategory);
-        return matchSearch && matchCategory;
+        const matchStatus = filterStatus === 'all' || (filterStatus === 'active' ? p.is_active : !p.is_active);
+        return matchSearch && matchCategory && matchStatus;
     });
+
+    // ── OCR Handlers ───────────────────────────────────────────────────────────
+    const ocrHandleFile = (file) => {
+        if (!file || !file.type.startsWith('image/')) { toast.error('กรุณาเลือกไฟล์รูปภาพเท่านั้น'); return; }
+        setOcrImageFile(file); setOcrPreview(URL.createObjectURL(file));
+        setOcrItems([]); setOcrStatuses({}); setOcrStep(1);
+    };
+    const ocrDrop = useCallback((e) => { e.preventDefault(); setOcrDragOver(false); ocrHandleFile(e.dataTransfer.files[0]); }, []);
+
+    const ocrScanImage = async () => {
+        if (!ocrImageFile) return;
+        setOcrScanning(true);
+        try {
+            const res = await ocrScan(ocrImageFile);
+            const data = res.data.data || [];
+            if (data.length === 0) { toast('ไม่พบรายการสินค้าในรูปภาพ', { icon: '🔍' }); return; }
+            setOcrItems(data.map((item, i) => ({ ...item, _id: i, _skip: false })));
+            setOcrStatuses({}); setOcrStep(2);
+            toast.success(`พบ ${data.length} รายการสินค้า`);
+        } catch (err) { toast.error(err.response?.data?.message || 'วิเคราะห์รูปภาพไม่สำเร็จ'); }
+        finally { setOcrScanning(false); }
+    };
+
+    const ocrUpdateItem = (idx, key, val) =>
+        setOcrItems(prev => prev.map((p, i) => i === idx ? { ...p, [key]: val } : p));
+    const ocrToggleSkip = (idx) =>
+        setOcrItems(prev => prev.map((p, i) => i === idx ? { ...p, _skip: !p._skip } : p));
+    const ocrMissingPrice = () => ocrItems.filter(i => !i._skip && i.is_new && !(parseFloat(i.price) > 0));
+    const ocrActiveItems = ocrItems.filter(i => !i._skip);
+
+    const ocrSaveAll = async () => {
+        const toSave = ocrItems.filter(i => !i._skip);
+        if (toSave.length === 0) { toast.error('เลือกสินค้าอย่างน้อย 1 รายการ'); return; }
+        const noPrice = ocrMissingPrice();
+        if (noPrice.length > 0) {
+            toast.error(`กรุณาใส่ราคาขายก่อนบันทึก (${noPrice.length} รายการ)`, { duration: 4000 });
+            setOcrEditingIdx(ocrItems.findIndex(i => i._id === noPrice[0]._id)); return;
+        }
+        setOcrSaving(true); setOcrStep(3);
+        let success = 0, failed = 0;
+        for (const item of toSave) {
+            const idx = item._id;
+            setOcrStatuses(prev => ({ ...prev, [idx]: { status: 'saving' } }));
+            try {
+                if (item.is_new) {
+                    await createProduct({ name: item.name, description: item.description || '', category_id: null, is_active: true,
+                        variants: [{ sku: item.sku || '', price: parseFloat(item.price) || 0, stock_quantity: parseInt(item.stock_quantity) || 1, unit: item.unit || '', low_stock_threshold: 5 }] });
+                } else {
+                    await API.patch(`/variants/${item.existing_variant_id}/stock`, { adjustment: parseInt(item.stock_quantity) || 1 });
+                }
+                setOcrStatuses(prev => ({ ...prev, [idx]: { status: 'success' } })); success++;
+            } catch (err) {
+                setOcrStatuses(prev => ({ ...prev, [idx]: { status: 'error', msg: err.response?.data?.message || 'บันทึกไม่สำเร็จ' } })); failed++;
+            }
+            setOcrSaveResults(prev => ({ ...prev, done: prev.done + 1, success, failed }));
+        }
+        setOcrSaving(false);
+        if (failed === 0) { toast.success(`บันทึกสำเร็จทั้งหมด ${success} รายการ! 🎉`); fetchAll(); }
+        else { toast(`บันทึกสำเร็จ ${success} รายการ, ล้มเหลว ${failed} รายการ`, { icon: '⚠️' }); fetchAll(); }
+    };
+
+    const ocrReset = () => {
+        setOcrStep(1); setOcrImageFile(null); setOcrPreview(null);
+        setOcrItems([]); setOcrStatuses({}); setOcrSaveResults({ done: 0, success: 0, failed: 0 });
+        setOcrSaving(false); setOcrEditingIdx(null);
+    };
+    const closeOcr = () => { ocrReset(); setOcrOpen(false); };
 
     return (
         <div>
@@ -208,8 +314,44 @@ const ProductsPage = () => {
                             onClick={() => setViewMode('table')} title="Table"><Table size={16} /></button>
                     </div>
                     <button className="btn btn-secondary btn-sm" onClick={fetchAll} title="รีเฟรช"><RotateCcw size={15} /></button>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => { ocrReset(); setOcrOpen(true); }}
+                        title="นำเข้าสินค้าด้วยรูปภาพ + AI"
+                    >
+                        <ScanLine size={16} /> เพิ่มด้วยรูปภาพ
+                    </button>
                     <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> เพิ่มสินค้า</button>
                 </div>
+            </div>
+
+            {/* ── Status Tabs ── */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                {[
+                    { key: 'all',      label: 'ทั้งหมด',       count: products.length },
+                    { key: 'active',   label: '✅ เปิดใช้งาน', count: products.filter(p => p.is_active).length },
+                    { key: 'inactive', label: '⏸️ ปิดใช้งาน',  count: products.filter(p => !p.is_active).length },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setFilterStatus(tab.key)}
+                        style={{
+                            padding: '7px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7,
+                            transition: 'all .15s',
+                            background: filterStatus === tab.key ? 'rgba(170,93,198,0.18)' : 'rgba(255,255,255,0.04)',
+                            color: filterStatus === tab.key ? '#c084fc' : 'rgba(255,255,255,0.45)',
+                            boxShadow: filterStatus === tab.key ? '0 0 0 1px rgba(170,93,198,0.4)' : '0 0 0 1px rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        {tab.label}
+                        <span style={{
+                            background: filterStatus === tab.key ? 'rgba(192,132,252,0.2)' : 'rgba(255,255,255,0.07)',
+                            color: filterStatus === tab.key ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                            borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+                        }}>{tab.count}</span>
+                    </button>
+                ))}
             </div>
 
             {/* ── Content ── */}
@@ -422,6 +564,63 @@ const ProductsPage = () => {
                             )}
                         </div>
 
+                        {/* ── Embedding Status Section ── */}
+                        <div style={{ padding: '0 28px 16px' }}>
+                            <div style={{
+                                borderRadius: 12,
+                                border: `1px solid ${embeddingInfo?.has_embedding ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                                background: embeddingInfo?.has_embedding ? 'rgba(52,211,153,0.05)' : 'rgba(239,68,68,0.04)',
+                                padding: '14px 18px',
+                                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+                            }}>
+                                <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
+                                    <Cpu size={16} style={{ marginTop: 2, flexShrink: 0, color: embeddingInfo?.has_embedding ? '#34d399' : '#f87171' }} />
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>AI Embedding</span>
+                                            {embeddingInfo === null ? (
+                                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>กำลังตรวจสอบ...</span>
+                                            ) : embeddingInfo.has_embedding ? (
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.12)', padding: '2px 8px', borderRadius: 99 }}>✓ มี Embedding</span>
+                                            ) : (
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.12)', padding: '2px 8px', borderRadius: 99 }}>✗ ไม่มี Embedding</span>
+                                            )}
+                                        </div>
+                                        {embeddingInfo?.has_embedding && (
+                                            <>
+                                                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                                                    อัปเดตล่าสุด: {new Date(embeddingInfo.updated_at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                </p>
+                                                {embeddingInfo.text_used && (
+                                                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.25)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
+                                                        title={embeddingInfo.text_used}>
+                                                        📝 {embeddingInfo.text_used.slice(0, 120)}{embeddingInfo.text_used.length > 120 ? '…' : ''}
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
+                                        {embeddingInfo && !embeddingInfo.has_embedding && (
+                                            <p style={{ margin: 0, fontSize: 12, color: 'rgba(239,68,68,0.6)' }}>
+                                                สินค้านี้ยังไม่มีข้อมูล embedding — AI จะค้นหาสินค้านี้ไม่พบ
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ flexShrink: 0, fontSize: 12, gap: 6 }}
+                                    disabled={embeddingLoading}
+                                    onClick={() => handleReEmbed(selectedProduct.product_id)}
+                                    title="Re-embed สินค้านี้ใหม่"
+                                >
+                                    {embeddingLoading
+                                        ? <><div className="spinner" style={{ width: 12, height: 12 }} /> กำลัง...</>
+                                        : <><RotateCcw size={13} /> Re-embed</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Footer */}
                         <div className="modal-footer" style={{ padding: '16px 28px 24px', gap: 12 }}>
                             <button className="btn btn-secondary"
@@ -574,6 +773,243 @@ const ProductsPage = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── OCR Import Modal ─── */}
+            {ocrOpen && (
+                <div className="modal-overlay" onClick={closeOcr}>
+                    <div className="modal-box" style={{ maxWidth: 780, width: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="modal-header">
+                            <div>
+                                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <ScanLine size={20} color="#22d3ee" /> เพิ่มสินค้าด้วยรูปภาพ (AI OCR)
+                                </h2>
+                                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>วิเคราะห์รูปภาพด้วย AI เพื่อเพิ่มสินค้าอัตโนมัติ</p>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {ocrStep > 1 && <button className="btn btn-secondary btn-sm" onClick={ocrReset}><RotateCcw size={13} /> เริ่มใหม่</button>}
+                                <button className="modal-close" onClick={closeOcr}><X size={20} /></button>
+                            </div>
+                        </div>
+
+                        {/* Steps */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            {['อัปโหลดรูปภาพ', 'ตรวจสอบรายการ', 'บันทึกข้อมูล'].map((label, i) => (
+                                <React.Fragment key={i}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{
+                                            width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                                            background: ocrStep > i + 1 ? '#22d3ee' : ocrStep === i + 1 ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.05)',
+                                            border: ocrStep === i + 1 ? '1.5px solid #22d3ee' : '1.5px solid rgba(255,255,255,0.08)',
+                                            color: ocrStep > i + 1 ? '#000' : ocrStep === i + 1 ? '#22d3ee' : 'rgba(255,255,255,0.3)'
+                                        }}>
+                                            {ocrStep > i + 1 ? <CheckCircle size={14} /> : i + 1}
+                                        </div>
+                                        <span style={{ fontSize: 13, color: ocrStep === i + 1 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' }}>{label}</span>
+                                    </div>
+                                    {i < 2 && <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>
+
+                            {/* STEP 1: Upload */}
+                            {ocrStep === 1 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div
+                                        style={{
+                                            border: `2px dashed ${ocrDragOver ? '#22d3ee' : 'rgba(255,255,255,0.12)'}`,
+                                            borderRadius: 14, padding: ocrPreview ? 0 : 40, cursor: 'pointer',
+                                            textAlign: 'center', transition: 'all .2s', overflow: 'hidden',
+                                            background: ocrDragOver ? 'rgba(34,211,238,0.04)' : 'rgba(255,255,255,0.02)',
+                                            minHeight: ocrPreview ? 200 : 160,
+                                        }}
+                                        onClick={() => ocrFileRef.current?.click()}
+                                        onDrop={ocrDrop}
+                                        onDragOver={e => { e.preventDefault(); setOcrDragOver(true); }}
+                                        onDragLeave={() => setOcrDragOver(false)}
+                                    >
+                                        {ocrPreview
+                                            ? <img src={ocrPreview} alt="preview" style={{ width: '100%', maxHeight: 280, objectFit: 'contain' }} />
+                                            : (<>
+                                                <Upload size={36} style={{ color: 'rgba(255,255,255,0.2)', marginBottom: 12 }} />
+                                                <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: 15 }}>ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์</p>
+                                                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>รองรับ JPG, PNG, WEBP — สูงสุด 10MB</span>
+                                            </>)
+                                        }
+                                        <input type="file" ref={ocrFileRef} accept="image/*" style={{ display: 'none' }} onChange={e => ocrHandleFile(e.target.files[0])} />
+                                    </div>
+                                    {ocrPreview && (
+                                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => ocrFileRef.current?.click()}><Upload size={13} /> เปลี่ยนรูป</button>
+                                            <button className="btn btn-primary" onClick={ocrScanImage} disabled={ocrScanning}>
+                                                {ocrScanning ? <><div className="spinner" style={{ width: 16, height: 16 }} /> กำลังวิเคราะห์...</> : <><ScanLine size={16} /> วิเคราะห์ด้วย AI</>}
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="card" style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.8 }}>
+                                        <p style={{ margin: '0 0 6px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>💡 เคล็ดลับ</p>
+                                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                            <li>รูปรายการสินค้า / ใบเสร็จ / คาตาล็อก — AI จะอ่านทีละรายการ</li>
+                                            <li>ภาพชัด ไม่เบลอ ได้ผลแม่นยำกว่า</li>
+                                            <li>รองรับทั้งภาษาไทยและอังกฤษ</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STEP 2: Review */}
+                            {ocrStep === 2 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {/* Stats bar */}
+                                    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px' }}>
+                                        <div style={{ display: 'flex', gap: 20 }}>
+                                            {[['รายการทั้งหมด', ocrItems.length, ''], ['จะบันทึก', ocrActiveItems.length, '#22d3ee'], ['สินค้าใหม่', ocrActiveItems.filter(i => i.is_new).length, '#a78bfa'], ['เพิ่มสต็อก', ocrActiveItems.filter(i => !i.is_new).length, '#34d399']].map(([label, val, color]) => (
+                                                <div key={label} style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: 20, fontWeight: 800, color: color || 'rgba(255,255,255,0.7)' }}>{val}</div>
+                                                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <img src={ocrPreview} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, opacity: 0.7 }} />
+                                    </div>
+
+                                    {/* Items */}
+                                    {ocrItems.map((item, idx) => (
+                                        <div key={idx} className="card" style={{ opacity: item._skip ? 0.4 : 1, border: !item._skip && item.is_new && !(parseFloat(item.price) > 0) ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.06)', padding: '14px 16px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <span className={`badge ${item.is_new ? 'badge-green' : 'badge-cyan'}`}>{item.is_new ? '✨ สินค้าใหม่' : '📦 เพิ่มสต็อก'}</span>
+                                                    {!item._skip && item.is_new && !(parseFloat(item.price) > 0) && <span className="badge badge-red"><AlertTriangle size={11} /> ต้องใส่ราคา</span>}
+                                                    {!item.is_new && item.existing_product_name && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>ตรงกับ: {item.existing_product_name}</span>}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => setOcrEditingIdx(ocrEditingIdx === idx ? null : idx)}>
+                                                        <Edit3 size={12} /> {ocrEditingIdx === idx ? 'ปิด' : 'แก้ไข'}
+                                                    </button>
+                                                    <button className={`btn btn-sm ${item._skip ? 'btn-primary' : ''}`} style={!item._skip ? { color: '#f87171', borderColor: 'rgba(248,113,113,0.3)', background: 'transparent', border: '1px solid' } : {}} onClick={() => ocrToggleSkip(idx)}>
+                                                        {item._skip ? '↩ ยกเลิกข้าม' : '✕ ข้าม'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Summary row */}
+                                            {ocrEditingIdx !== idx && (
+                                                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
+                                                    {item.is_new ? (
+                                                        <>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>ชื่อสินค้า</span><div style={{ fontWeight: 600 }}>{item.name || '—'}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>SKU</span><div>{item.sku || '—'}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>ราคาขาย *</span><div style={{ fontWeight: 700, color: parseFloat(item.price) > 0 ? '#a5b4fc' : '#f87171' }}>{parseFloat(item.price) > 0 ? `฿${parseFloat(item.price).toLocaleString()}` : '⚠ ยังไม่ระบุ'}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สต็อก</span><div>{item.stock_quantity} {item.unit || ''}</div></div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สินค้า</span><div style={{ fontWeight: 600 }}>{item.existing_product_name || item.name}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สต็อกปัจจุบัน</span><div>{item.existing_variant_stock ?? '—'}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>จะเพิ่ม</span><div style={{ fontWeight: 700, color: '#22d3ee' }}>+{item.stock_quantity || 1}</div></div>
+                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>หลังเพิ่ม</span><div style={{ fontWeight: 700, color: '#a5b4fc' }}>{(item.existing_variant_stock || 0) + (parseInt(item.stock_quantity) || 0)}</div></div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Edit form */}
+                                            {ocrEditingIdx === idx && (
+                                                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                                    {!item.is_new ? (
+                                                        <div className="input-group" style={{ maxWidth: 200 }}>
+                                                            <label className="input-label">จำนวนที่จะเพิ่ม *</label>
+                                                            <input type="number" className="input-field" min={1} value={item.stock_quantity || 1} onChange={e => ocrUpdateItem(idx, 'stock_quantity', e.target.value)} />
+                                                            <p style={{ fontSize: 12, color: '#22d3ee', marginTop: 4 }}>สต็อกหลังเพิ่ม: {(item.existing_variant_stock || 0) + (parseInt(item.stock_quantity) || 0)}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="form-row">
+                                                                <div className="input-group"><label className="input-label">ชื่อสินค้า *</label><input className="input-field" value={item.name || ''} onChange={e => ocrUpdateItem(idx, 'name', e.target.value)} /></div>
+                                                                <div className="input-group"><label className="input-label">SKU</label><input className="input-field" value={item.sku || ''} onChange={e => ocrUpdateItem(idx, 'sku', e.target.value)} /></div>
+                                                            </div>
+                                                            <div className="form-row">
+                                                                <div className="input-group">
+                                                                    <label className="input-label">ราคาขาย (บาท) <span style={{ color: '#f87171' }}>*</span></label>
+                                                                    <input type="number" min={0} className={`input-field ${!(parseFloat(item.price) > 0) ? 'input-error' : ''}`} placeholder="ต้องระบุ" value={item.price || ''} onChange={e => ocrUpdateItem(idx, 'price', e.target.value)} />
+                                                                </div>
+                                                                <div className="input-group"><label className="input-label">สต็อกเริ่มต้น</label><input type="number" className="input-field" min={1} value={item.stock_quantity || 1} onChange={e => ocrUpdateItem(idx, 'stock_quantity', e.target.value)} /></div>
+                                                                <div className="input-group"><label className="input-label">หน่วย</label><input className="input-field" value={item.unit || ''} onChange={e => ocrUpdateItem(idx, 'unit', e.target.value)} placeholder="ชิ้น / กล่อง" /></div>
+                                                            </div>
+                                                            <div className="input-group"><label className="input-label">รายละเอียด</label><textarea className="input-field" rows={2} value={item.description || ''} onChange={e => ocrUpdateItem(idx, 'description', e.target.value)} /></div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Review Footer */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <button className="btn btn-secondary" onClick={() => setOcrStep(1)}>← กลับ</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            {ocrMissingPrice().length > 0 && (
+                                                <span style={{ fontSize: 13, color: '#fb923c', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <AlertTriangle size={14} /> ยังมี {ocrMissingPrice().length} รายการที่ยังไม่มีราคา
+                                                </span>
+                                            )}
+                                            <button className="btn btn-primary" onClick={ocrSaveAll} disabled={ocrActiveItems.length === 0 || ocrMissingPrice().length > 0}>
+                                                <Save size={16} /> บันทึก {ocrActiveItems.length} รายการ
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STEP 3: Results */}
+                            {ocrStep === 3 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {ocrSaving && (
+                                        <div className="card" style={{ padding: '18px 20px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10, color: 'rgba(255,255,255,0.6)' }}>
+                                                <span>กำลังบันทึก... {ocrSaveResults.done} / {ocrActiveItems.length}</span>
+                                                <span>{Math.round((ocrSaveResults.done / Math.max(ocrActiveItems.length, 1)) * 100)}%</span>
+                                            </div>
+                                            <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', borderRadius: 999, background: '#22d3ee', transition: 'width .3s', width: `${(ocrSaveResults.done / Math.max(ocrActiveItems.length, 1)) * 100}%` }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {!ocrSaving && (
+                                        <div className="card" style={{ textAlign: 'center', padding: '24px 20px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 20 }}>
+                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: '#34d399' }}>{ocrSaveResults.success}</div><div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>บันทึกสำเร็จ</div></div>
+                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: '#f87171' }}>{ocrSaveResults.failed}</div><div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>ล้มเหลว</div></div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                                                <button className="btn btn-secondary" onClick={ocrReset}><RotateCcw size={14} /> นำเข้าใหม่</button>
+                                                <button className="btn btn-primary" onClick={closeOcr}><CheckCircle size={14} /> ปิดและดูสินค้า</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {ocrItems.filter(i => !i._skip).map((item, idx) => {
+                                        const st = ocrStatuses[item._id];
+                                        return (
+                                            <div key={idx} className="card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${st?.status === 'error' ? 'rgba(239,68,68,0.3)' : st?.status === 'success' ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                                                <div>
+                                                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{item.name}</p>
+                                                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{item.sku && `SKU: ${item.sku} · `}{item.unit || ''}</p>
+                                                </div>
+                                                {st?.status === 'saving' && <div className="spinner" style={{ width: 16, height: 16 }} />}
+                                                {st?.status === 'success' && <CheckCircle size={18} color="#34d399" />}
+                                                {st?.status === 'error' && <XCircle size={18} color="#f87171" title={st.msg} />}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

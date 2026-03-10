@@ -171,36 +171,9 @@ Timestamp: ${now}
                 }
             }
 
-            // 4. If still no match, create a NEW product automatically
+            // 4. No match found - will be marked as new
             if (!existingVariant) {
-                try {
-                    console.log(`✨ OCR creating new product: "${p.name}"`);
-                    const newProd = await productService.create({
-                        name: p.name,
-                        description: p.description || `Auto-created from OCR scan (Brand: ${p.brand || 'Unknown'})`,
-                        category_id: null,
-                        is_active: true,
-                        variants: [{
-                            sku: p.sku || `OCR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                            price: p.price || 0,
-                            stock_quantity: 0,
-                            unit: p.unit,
-                            is_main: true
-                        }]
-                    });
-
-                    // Fetch the variant for consistent data
-                    const r = await db.query(
-                        `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
-                         FROM product_variants pv
-                         JOIN products p ON p.product_id = pv.product_id
-                         WHERE p.product_id = $1 LIMIT 1`,
-                        [newProd.product_id]
-                    );
-                    if (r.rows.length > 0) existingVariant = r.rows[0];
-                } catch (createErr) {
-                    console.error(`❌ OCR auto-creation failed for "${p.name}":`, createErr.message);
-                }
+                console.log(`🔍 OCR: No match for "${p.name}", marking as new`);
             }
 
             return {

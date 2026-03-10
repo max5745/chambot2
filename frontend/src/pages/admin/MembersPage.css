@@ -34,14 +34,14 @@
     gap: 10px;
     font-size: 1.45rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: var(--text-primary);
     margin: 0;
 }
 
 .members-subtitle {
     margin: 4px 0 0;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--text-muted);
 }
 
 .members-header-actions {
@@ -56,17 +56,18 @@
     gap: 6px;
     padding: 8px 16px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.65);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
     font-size: 0.83rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .btn-refresh:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-accent);
 }
 
 .btn-add-admin {
@@ -76,13 +77,13 @@
     padding: 8px 18px;
     border-radius: 8px;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: var(--accent);
     color: #fff;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    box-shadow: var(--shadow-accent);
 }
 
 .btn-add-admin:hover {
@@ -115,14 +116,16 @@
     gap: 14px;
     padding: 18px 20px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(255, 255, 255, 0.04);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-light);
 }
 
 .stat-icon {
@@ -162,13 +165,13 @@
 .stat-value {
     font-size: 1.6rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: var(--text-primary);
     line-height: 1;
 }
 
 .stat-label {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     margin-top: 4px;
 }
 
@@ -186,9 +189,9 @@
     gap: 8px;
     padding: 9px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
     flex: 1;
     min-width: 220px;
 }
@@ -197,13 +200,13 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #f1f5f9;
+    color: var(--text-primary);
     font-size: 0.85rem;
     width: 100%;
 }
 
 .search-box input::placeholder {
-    color: rgba(255, 255, 255, 0.25);
+    color: var(--text-muted);
 }
 
 .filter-tabs {
@@ -215,9 +218,9 @@
 .filter-tab {
     padding: 7px 14px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background: transparent;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-muted);
     font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -225,17 +228,18 @@
 
 .filter-tab.active,
 .filter-tab:hover {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: rgba(99, 102, 241, 0.4);
-    color: #a5b4fc;
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 /* ── Table ── */
 .members-table-wrap {
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
 }
 
 .members-loading,
@@ -246,7 +250,7 @@
     justify-content: center;
     gap: 12px;
     padding: 60px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
 }
 
 .members-table {
@@ -256,41 +260,44 @@
 }
 
 .members-table thead tr {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border);
 }
 
 .members-table th {
     padding: 13px 16px;
     text-align: left;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     font-weight: 600;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
+    background: var(--bg-surface);
 }
 
 .members-table tbody tr {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--border-light);
     transition: background 0.15s;
 }
 
 .members-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
 }
 
 .members-table td {
     padding: 13px 16px;
-    color: rgba(255, 255, 255, 0.75);
+    color: #334155;
+    /* Darker slate for better readability */
     vertical-align: middle;
 }
 
 .row-suspended td {
-    opacity: 0.6;
+    opacity: 0.55;
+    color: #64748b;
 }
 
 .td-index {
-    color: rgba(255, 255, 255, 0.2);
+    color: #94a3b8;
     width: 40px;
 }
 
@@ -300,10 +307,17 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    color: #1e293b;
+    /* More prominent */
+}
+
+.td-name {
+    font-weight: 500;
+    color: #0f172a;
 }
 
 .no-name {
-    color: rgba(255, 255, 255, 0.2);
+    color: var(--text-muted);
     font-style: italic;
 }
 
@@ -412,14 +426,15 @@
 
 /* ── Confirm dialog ── */
 .confirm-modal {
-    background: #13151f;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 18px;
     padding: 36px 32px;
     max-width: 380px;
     width: 90%;
     text-align: center;
     animation: slideUp 0.25s ease;
+    box-shadow: var(--shadow-lg);
 }
 
 @keyframes slideUp {
@@ -456,13 +471,13 @@
 
 .confirm-modal h3 {
     font-size: 1.1rem;
-    color: #f1f5f9;
+    color: var(--text-primary);
     margin: 0 0 10px;
 }
 
 .confirm-modal p {
     font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-secondary);
     margin: 0 0 24px;
     line-height: 1.6;
 }
@@ -486,7 +501,9 @@
 }
 
 .btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--bg-surface);
+    border-color: var(--border-accent);
+    color: var(--text-primary);
 }
 
 .btn-confirm {
@@ -525,23 +542,24 @@
 /* ── Add Admin Modal ── */
 .add-admin-modal {
     position: relative;
-    background: #13151f;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 36px 32px;
     max-width: 420px;
     width: 90%;
     text-align: center;
     animation: slideUp 0.25s ease;
+    box-shadow: var(--shadow-lg);
 }
 
 .modal-close {
     position: absolute;
     top: 16px;
     right: 16px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
     border-radius: 8px;
     width: 32px;
     height: 32px;
@@ -600,7 +618,7 @@
 
 .step-label {
     font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-secondary);
 }
 
 .step-arrow {
@@ -629,13 +647,13 @@
 
 .modal-title {
     font-size: 1.15rem;
-    color: #f1f5f9;
+    color: var(--text-primary);
     margin: 0 0 8px;
 }
 
 .modal-desc {
     font-size: 0.83rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     line-height: 1.6;
     margin: 0 0 22px;
 }
@@ -649,7 +667,7 @@
     display: block;
     font-size: 0.78rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-secondary);
     margin-bottom: 7px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -661,16 +679,16 @@
     gap: 10px;
     padding: 11px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.4);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
 }
 
 .input-with-icon input {
     background: transparent;
     border: none;
     outline: none;
-    color: #f1f5f9;
+    color: var(--text-primary);
     font-size: 0.9rem;
     width: 100%;
 }
@@ -679,9 +697,9 @@
     width: 100%;
     padding: 12px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: #f1f5f9;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     font-size: 1.1rem;
     text-align: center;
     letter-spacing: 0.3em;
@@ -691,7 +709,7 @@
 }
 
 .otp-input:focus {
-    border-color: rgba(99, 102, 241, 0.5);
+    border-color: var(--accent);
 }
 
 .btn-primary {
@@ -729,16 +747,18 @@
     flex: 1;
     padding: 12px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
     font-size: 0.88rem;
     cursor: pointer;
     transition: 0.2s;
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-accent);
 }
 
 .btn-secondary:disabled {

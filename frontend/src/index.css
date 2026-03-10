@@ -1,43 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ===== CSS DESIGN SYSTEM — Deep Purple Theme ===== */
+/* ===== CSS DESIGN SYSTEM — Premium Light Theme ===== */
 :root {
-  /* ── Backgrounds (darkest → lightest) */
-  --bg-primary: #07031C;
-  /* darkest bg */
-  --bg-secondary: #160C3D;
-  /* cards / panels */
-  --bg-surface: #2D0F3F;
+  /* ── Backgrounds (lightest → darkest) */
+  --bg-primary: #f8fafc;
+  /* clean slate bg */
+  --bg-secondary: #ffffff;
+  /* white cards / panels */
+  --bg-surface: #f1f5f9;
   /* subtle surfaces */
-  --bg-elevated: #463688;
+  --bg-elevated: #e2e8f0;
   /* hover states */
-  --bg-glass: rgba(22, 12, 61, 0.8);
+  --bg-glass: rgba(255, 255, 255, 0.8);
 
-  /* ── Accent — Purple/Violet */
-  --accent: #5D2B7E;
-  /* mid purple */
-  --accent-light: #AA5DC6;
-  /* bright lavender */
-  --accent-dark: #504D9C;
-  /* dark indigo-purple */
-  --accent-glow: rgba(170, 93, 198, 0.22);
+  /* ── Accent — Indigo-Blue */
+  --accent: #6366f1;
+  /* vibrant indigo */
+  --accent-light: #818cf8;
+  /* soft indigo */
+  --accent-dark: #4f46e5;
+  /* deep indigo */
+  --accent-glow: rgba(99, 102, 241, 0.15);
 
   /* ── Secondary tint */
-  --cyan: #AA5DC6;
-  --cyan-glow: rgba(170, 93, 198, 0.18);
+  --cyan: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.15);
 
   /* ── Text */
-  --text-primary: #f0e8ff;
-  --text-secondary: #c4aee0;
-  --text-muted: #7c6a9e;
-  --text-accent: #AA5DC6;
+  --text-primary: #0f172a;
+  /* deep slate */
+  --text-secondary: #475569;
+  /* slate gray */
+  --text-muted: #94a3b8;
+  /* light slate */
+  --text-accent: #6366f1;
 
   /* ── Borders */
-  --border: rgba(170, 93, 198, 0.18);
-  --border-accent: rgba(170, 93, 198, 0.5);
+  --border: #e2e8f0;
+  --border-accent: rgba(99, 102, 241, 0.3);
 
   /* ── Semantic */
-  --danger: #e05c7e;
+  --danger: #ef4444;
   --warning: #f59e0b;
   --success: #22c55e;
 
@@ -57,12 +60,12 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* ── Shadows */
-  --shadow-sm: 0 1px 4px rgba(93, 43, 126, 0.15);
-  --shadow-md: 0 4px 16px rgba(93, 43, 126, 0.25);
-  --shadow-lg: 0 8px 32px rgba(93, 43, 126, 0.35);
-  --shadow-accent: 0 0 24px rgba(170, 93, 198, 0.3);
-  --shadow-cyan: 0 0 20px rgba(170, 93, 198, 0.2);
+  /* ── Shadows (Softer for light mode) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-accent: 0 10px 15px -3px rgba(99, 102, 241, 0.15);
+  --shadow-cyan: 0 10px 15px -3px rgba(6, 182, 212, 0.15);
 
   /* ── Transitions */
   --transition-fast: 0.15s ease;
@@ -82,7 +85,7 @@
 
 html {
   scroll-behavior: smooth;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -95,14 +98,14 @@ body {
   font-size: 16px;
 }
 
-/* Force dark native dropdown on all selects */
+/* Override native dropdown colors */
 select {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 select option {
-  background-color: #160C3D;
-  color: #f0e8ff;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 a {

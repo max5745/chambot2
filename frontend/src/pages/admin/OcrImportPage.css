@@ -47,7 +47,7 @@
     background: var(--accent);
     border-color: var(--accent);
     color: white;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    box-shadow: var(--shadow-accent);
 }
 
 .ocr-step.done .ocr-step-circle {

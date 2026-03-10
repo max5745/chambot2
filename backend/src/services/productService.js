@@ -110,13 +110,24 @@ const create = async ({ name, description, category_id, is_active = true, varian
             const isMain = v.is_main === true || (!hasMain && i === 0);
             if (isMain) hasMain = true;
 
-            await db.query(
+            const vRes = await db.query(
                 `INSERT INTO product_variants
                     (product_id, sku, price, stock_quantity, image_url, unit, low_stock_threshold, is_main)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING variant_id`,
                 [product.product_id, sku, Number(v.price) || 0, Number(v.stock_quantity) || 0,
                 v.image_url || null, v.unit || null, Number(v.low_stock_threshold) || 5, isMain]
             );
+            const variantId = vRes.rows[0].variant_id;
+
+            // Record initial stock transaction if > 0
+            if (Number(v.stock_quantity) > 0) {
+                await db.query(
+                    `INSERT INTO inventory_transactions
+                        (variant_id, quantity_changed, transaction_type, notes)
+                     VALUES ($1, $2, 'restock', 'Initial stock on creation')`,
+                    [variantId, Number(v.stock_quantity)]
+                );
+            }
         }
 
         await db.query('COMMIT');

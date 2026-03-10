@@ -2,7 +2,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(10, 14, 26, 0.85);
+    background: var(--bg-glass);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
@@ -38,7 +38,7 @@
 .logo-text {
     font-size: 20px;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--accent-light), var(--cyan));
+    background: linear-gradient(135deg, var(--accent), var(--cyan));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

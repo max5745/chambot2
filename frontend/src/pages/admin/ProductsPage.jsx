@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Search, X, Upload, RotateCcw, Star, LayoutGrid, Table, Filter, ScanLine, CheckCircle, XCircle, Save, Edit3, AlertTriangle, ChevronRight, Cpu } from 'lucide-react';
-import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, uploadImage, getImageUrl, getProductById, setMainVariant, updateVariantThreshold, ocrScan, checkProductEmbedding, embedSingleProduct } from '../../api';
+import { getProducts, getCategories, createProduct, updateProduct, deleteProduct, uploadImage, getImageUrl, getProductById, setMainVariant, updateVariantThreshold, ocrScan, checkProductEmbedding, embedSingleProduct, adjustStock } from '../../api';
 import API from '../../api';
 import ProductImage from '../../components/ProductImage';
 import toast from 'react-hot-toast';
@@ -50,7 +50,7 @@ const ProductsPage = () => {
     const [categories, setCategories] = useState([]);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive'
+    const [filterStatus, setFilterStatus] = useState('active'); // 'active' | 'inactive'
     const [viewMode, setViewMode] = useState('grid');
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -262,10 +262,13 @@ const ProductsPage = () => {
             setOcrStatuses(prev => ({ ...prev, [idx]: { status: 'saving' } }));
             try {
                 if (item.is_new) {
-                    await createProduct({ name: item.name, description: item.description || '', category_id: null, is_active: true,
-                        variants: [{ sku: item.sku || '', price: parseFloat(item.price) || 0, stock_quantity: parseInt(item.stock_quantity) || 1, unit: item.unit || '', low_stock_threshold: 5 }] });
+                    await createProduct({
+                        name: item.name, description: item.description || '', category_id: null, is_active: true,
+                        variants: [{ sku: item.sku || '', price: parseFloat(item.price) || 0, stock_quantity: parseInt(item.stock_quantity) || 1, unit: item.unit || '', low_stock_threshold: 5 }]
+                    });
                 } else {
-                    await API.patch(`/variants/${item.existing_variant_id}/stock`, { adjustment: parseInt(item.stock_quantity) || 1 });
+                    // Adjust stock on existing variant
+                    await adjustStock(item.existing_variant_id, parseInt(item.stock_quantity) || 1, 'restock');
                 }
                 setOcrStatuses(prev => ({ ...prev, [idx]: { status: 'success' } })); success++;
             } catch (err) {
@@ -328,9 +331,8 @@ const ProductsPage = () => {
             {/* ── Status Tabs ── */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
                 {[
-                    { key: 'all',      label: 'ทั้งหมด',       count: products.length },
-                    { key: 'active',   label: '✅ เปิดใช้งาน', count: products.filter(p => p.is_active).length },
-                    { key: 'inactive', label: '⏸️ ปิดใช้งาน',  count: products.filter(p => !p.is_active).length },
+                    { key: 'active', label: '✅ เปิดใช้งาน', count: products.filter(p => p.is_active).length },
+                    { key: 'inactive', label: '⏸️ ปิดใช้งาน', count: products.filter(p => !p.is_active).length },
                 ].map(tab => (
                     <button
                         key={tab.key}

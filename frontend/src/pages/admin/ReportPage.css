@@ -10,10 +10,11 @@
     align-items: flex-end;
     gap: 12px;
     flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px 20px;
+    box-shadow: var(--shadow-sm);
 }
 
 .rpt-date-group {
@@ -24,7 +25,7 @@
 
 .rpt-date-group label {
     font-size: 0.72rem;
-    color: #6b7280;
+    color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -41,8 +42,8 @@
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 6px;
 }
@@ -56,21 +57,21 @@
     font-size: 0.85rem;
     font-weight: 600;
     background: transparent;
-    color: #6b7280;
+    color: var(--text-muted);
     border: none;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .rpt-tab-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
 }
 
 .rpt-tab-btn.active {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+    background: var(--accent);
     color: #fff;
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+    box-shadow: var(--shadow-accent);
 }
 
 /* ── Stat Cards ── */
@@ -103,16 +104,16 @@
 }
 
 .rpt-stat-card {
-    background: #13151f;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-sm);
 }
 
 .rpt-stat-label {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
@@ -126,23 +127,23 @@
 
 .rpt-stat-sub {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     margin-top: 6px;
 }
 
 /* ── Chart Card ── */
 .rpt-chart-card {
-    background: #13151f;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 24px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-md);
 }
 
 .rpt-chart-title {
     font-size: 14px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
     margin: 0 0 20px 0;
 }
 
@@ -168,7 +169,7 @@
 
 /* ── Empty state ── */
 .rpt-empty {
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 0.85rem;
     text-align: center;
     padding: 2rem;

@@ -24,8 +24,8 @@
 }
 
 .ord-filter-active {
-    border-color: rgba(170, 93, 198, 0.5) !important;
-    color: #AA5DC6 !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
 }
 
 /* ── Date bar (collapsible) ── */
@@ -35,7 +35,7 @@
     gap: 10px;
     padding: 12px 0;
     flex-wrap: wrap;
-    border-bottom: 1px solid rgba(170, 93, 198, 0.1);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 12px;
     animation: fadeIn 0.2s ease;
 }
@@ -53,17 +53,17 @@
 }
 
 .orders-date-input {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(170, 93, 198, 0.2);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--text-primary);
     font-size: 13px;
     padding: 7px 12px;
     min-height: 36px;
     font-family: inherit;
     cursor: pointer;
     transition: border-color 0.15s;
-    color-scheme: dark;
+    color-scheme: light;
 }
 
 .orders-date-input:focus {
@@ -90,7 +90,7 @@
     border-radius: 10px;
     font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
@@ -101,12 +101,12 @@
 }
 
 .ord-tab:hover {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--text-secondary);
 }
 
 .ord-tab-active {
-    color: #AA5DC6;
-    border-bottom-color: #AA5DC6;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
     font-weight: 700;
 }
 
@@ -120,9 +120,9 @@
 
 /* ── Order Card ── */
 .ord-card {
-    background: #160C3D;
-    border: 1px solid rgba(170, 93, 198, 0.15);
-    border-left: 4px solid #5D2B7E;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
     border-radius: 16px;
     padding: 16px;
     cursor: pointer;
@@ -134,8 +134,8 @@
 }
 
 .ord-card:hover {
-    border-color: rgba(170, 93, 198, 0.4);
-    box-shadow: 0 6px 24px rgba(93, 43, 126, 0.25);
+    border-color: var(--accent-light);
+    box-shadow: var(--shadow-md);
     transform: translateY(-2px);
 }
 
@@ -149,13 +149,13 @@
 .ord-card-id {
     font-weight: 800;
     font-size: 15px;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
     flex-shrink: 0;
 }
 
 .ord-card-time {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.25);
+    color: var(--text-muted);
     margin-left: auto;
     flex-shrink: 0;
 }
@@ -165,7 +165,7 @@
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-secondary);
 }
 
 .ord-card-call {
@@ -194,23 +194,23 @@
 .ord-card-amount {
     font-size: 18px;
     font-weight: 800;
-    color: #AA5DC6;
+    color: var(--accent);
 }
 
 .tracking-code {
     font-family: monospace;
     font-size: 11px;
-    background: rgba(170, 93, 198, 0.15);
+    background: var(--accent-glow);
     padding: 2px 6px;
     border-radius: 4px;
-    color: #AA5DC6;
+    color: var(--accent);
 }
 
 .ord-card-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    border-top: 1px solid rgba(170, 93, 198, 0.1);
+    border-top: 1px solid var(--border-light);
     padding-top: 10px;
     margin-top: 2px;
 }
@@ -224,7 +224,7 @@
 
 .ord-card-detail-hint {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.2);
+    color: var(--text-muted);
     text-align: right;
     margin-top: -4px;
 }
@@ -236,7 +236,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px 0;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     font-size: 14px;
 }
 
@@ -264,11 +264,11 @@
     width: 100%;
     max-width: 440px;
     height: 100vh;
-    background: #160C3D;
-    border-left: 1px solid rgba(170, 93, 198, 0.2);
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    box-shadow: -12px 0 48px rgba(7, 3, 28, 0.6);
+    box-shadow: var(--shadow-lg);
     animation: drawerIn 0.25s ease;
     overflow: hidden;
 }
@@ -298,7 +298,7 @@
 .ord-drawer-title {
     font-size: 18px;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
     margin-bottom: 6px;
 }
 
@@ -313,8 +313,8 @@
 
 /* ── Info rows ── */
 .ord-info-block {
-    background: rgba(170, 93, 198, 0.05);
-    border: 1px solid rgba(170, 93, 198, 0.12);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
     border-radius: 14px;
     padding: 14px;
     display: flex;
@@ -336,7 +336,7 @@
 
 .ord-info-label {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.4px;
     margin-bottom: 2px;
@@ -344,7 +344,7 @@
 
 .ord-info-val {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
     font-weight: 500;
     line-height: 1.4;
 }
@@ -380,7 +380,7 @@
 .ord-section-title {
     font-size: 11px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 10px;
@@ -415,7 +415,7 @@
 
 .ord-item-name {
     flex: 1;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
@@ -435,16 +435,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid rgba(170, 93, 198, 0.1);
+    border-top: 1px solid var(--border-light);
     padding-top: 10px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-primary);
     font-size: 14px;
 }
 
 .ord-total-val {
     font-size: 20px;
-    color: #AA5DC6;
+    color: var(--accent);
 }
 
 /* ── Timeline ── */
@@ -494,12 +494,12 @@
 
 .ord-tl-note {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-secondary);
 }
 
 .ord-tl-time {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.2);
+    color: var(--text-muted);
 }
 
 /* ── Action section ── */

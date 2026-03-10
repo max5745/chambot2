@@ -161,6 +161,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [drill, setDrill] = useState(null); // { start, end, label } for DrillDown
+    const [chartType, setChartType] = useState('bar'); // 'bar' | 'line'
 
     useEffect(() => {
         setLoading(true);
@@ -248,50 +249,99 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
 
             {/* Bar chart */}
             <div className="rpt-chart-card">
-                <h3 className="rpt-chart-title">
-                    📊 ยอดขายราย{PERIOD_LABEL[groupBy]}
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
-                        {groupBy === 'hour' ? 'กดแต่ละแท่งเพื่อดูสินค้า' : 'กดแต่ละวันเพื่อดูยอดขายรายชั่วโมง'}
-                    </span>
-                </h3>
+                <div className="rpt-chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <h3 className="rpt-chart-title" style={{ margin: 0 }}>
+                        📊 ยอดขายราย{PERIOD_LABEL[groupBy]}
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
+                            {groupBy === 'hour' ? 'กดแต่ละส่วนเพื่อดูสินค้า' : 'กดแต่ละวันเพื่อดูรายชั่วโมง'}
+                        </span>
+                    </h3>
+                    <div className="rpt-chart-toggle" style={{ display: 'flex', background: 'var(--bg-surface)', padding: 3, borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <button
+                            className={`btn btn-sm ${chartType === 'bar' ? 'active-toggle' : ''}`}
+                            onClick={() => setChartType('bar')}
+                            style={{
+                                padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
+                                background: chartType === 'bar' ? 'var(--accent)' : 'transparent',
+                                color: chartType === 'bar' ? '#fff' : 'var(--text-muted)',
+                                fontWeight: 600, transition: '0.2s'
+                            }}
+                        >เเท่ง</button>
+                        <button
+                            className={`btn btn-sm ${chartType === 'line' ? 'active-toggle' : ''}`}
+                            onClick={() => setChartType('line')}
+                            style={{
+                                padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
+                                background: chartType === 'line' ? 'var(--accent)' : 'transparent',
+                                color: chartType === 'line' ? '#fff' : 'var(--text-muted)',
+                                fontWeight: 600, transition: '0.2s'
+                            }}
+                        >จุด/เส้น</button>
+                    </div>
+                </div>
                 {chartData.length === 0
                     ? <p className="rpt-empty">ไม่มีข้อมูลในช่วงที่เลือก</p>
                     : (
                         <ResponsiveContainer width="100%" height={240}>
-                            <BarChart data={chartData} margin={{ bottom: 8 }}
-                                onClick={(e) => {
-                                    if (e && e.activePayload && e.activePayload[0]) {
-                                        const row = e.activePayload[0].payload;
-                                        if (groupBy === 'hour') {
-                                            // Hour mode: show product bottom-sheet for the whole day
-                                            setDrill(getDrillPeriod(row));
-                                        } else {
-                                            // Week/Month/Day mode: drill-through to daily view
-                                            onDrillDay && onDrillDay(row._date || row.period);
+                            {chartType === 'bar' ? (
+                                <BarChart data={chartData} margin={{ bottom: 8 }}
+                                    onClick={(e) => {
+                                        if (e && e.activePayload && e.activePayload[0]) {
+                                            const row = e.activePayload[0].payload;
+                                            if (groupBy === 'hour') setDrill(getDrillPeriod(row));
+                                            else onDrillDay && onDrillDay(row._date || row.period);
                                         }
-                                    }
-                                }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                                <XAxis dataKey="period" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(255,255,255,0.05)', radius: 6 }}
-                                    contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-                                    itemStyle={{ fontSize: 13 }}
-                                    formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
-                                    labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}
-                                />
-                                <Bar dataKey="revenue" name="revenue" radius={[6, 6, 0, 0]}
-                                    style={{ cursor: 'pointer' }}
+                                    }}
                                 >
-                                    {chartData.map((row, i) => {
-                                        const base = by_category.length > 0 ? CAT_COLORS[0] : '#6366f1';
-                                        const opacity = Number(row.revenue) > 0 ? 1 : 0.22;
-                                        return <Cell key={i} fill={base} fillOpacity={opacity} />;
-                                    })}
-                                </Bar>
-                            </BarChart>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} strokeOpacity={0.5} />
+                                    <XAxis dataKey="period" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
+                                    <Tooltip
+                                        cursor={{ fill: 'var(--bg-surface)', opacity: 0.5 }}
+                                        contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}
+                                        itemStyle={{ fontSize: 13, color: '#1e293b' }}
+                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                        labelStyle={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}
+                                    />
+                                    <Bar dataKey="revenue" name="revenue" radius={[6, 6, 0, 0]} style={{ cursor: 'pointer' }}>
+                                        {chartData.map((row, i) => {
+                                            const base = by_category.length > 0 ? CAT_COLORS[0] : '#6366f1';
+                                            const opacity = Number(row.revenue) > 0 ? 1 : 0.22;
+                                            return <Cell key={i} fill={base} fillOpacity={opacity} />;
+                                        })}
+                                    </Bar>
+                                </BarChart>
+                            ) : (
+                                <LineChart data={chartData} margin={{ bottom: 8, left: 10, right: 10 }}
+                                    onClick={(e) => {
+                                        if (e && e.activePayload && e.activePayload[0]) {
+                                            const row = e.activePayload[0].payload;
+                                            if (groupBy === 'hour') setDrill(getDrillPeriod(row));
+                                            else onDrillDay && onDrillDay(row._date || row.period);
+                                        }
+                                    }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} strokeOpacity={0.5} />
+                                    <XAxis dataKey="period" tick={{ fill: '#64748b', fontSize: 11 }} />
+                                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
+                                    <Tooltip
+                                        contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}
+                                        itemStyle={{ fontSize: 13, color: '#1e293b' }}
+                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                        labelStyle={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="revenue"
+                                        name="revenue"
+                                        stroke="#6366f1"
+                                        strokeWidth={3}
+                                        dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
+                                        activeDot={{ r: 6, stroke: '#6366f1', strokeWidth: 2, fill: '#fff' }}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </LineChart>
+                            )}
                         </ResponsiveContainer>
                     )}
             </div>

@@ -105,6 +105,7 @@ const adjust = async (items) => {
             let txType = 'adjustment';
             if (reason === 'cancel') txType = 'cancel';
             else if (reason === 'purchase') txType = 'purchase';
+            else if (reason === 'restock') txType = 'restock';
 
             const r = await _applyChange(client, variant_id, d, txType, notes || reason || 'Manual adjustment');
             results.push(r);

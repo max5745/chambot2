@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_transactions (
 -- 3.12 PRODUCT EMBEDDINGS (Vector Search)
 CREATE TABLE IF NOT EXISTS public.product_embeddings (
     product_id  INT PRIMARY KEY REFERENCES public.products(product_id) ON DELETE CASCADE,
-    embedding   vector(384) NOT NULL,
+    embedding   vector(768) NOT NULL,
     text_used   TEXT,
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
@@ -403,7 +403,7 @@ LEFT JOIN public.users u ON o.user_id = u.id;
 -- Semantic search helper: returns product_id ranked by cosine similarity
 -- Usage: SELECT * FROM search_products_by_embedding('[0.1,0.2,...]'::vector, 10);
 CREATE OR REPLACE FUNCTION search_products_by_embedding(
-    query_embedding vector(384),
+    query_embedding vector(768),
     match_count     INT DEFAULT 10
 )
 RETURNS TABLE (

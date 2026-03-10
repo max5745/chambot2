@@ -1,6 +1,7 @@
 const Groq = require("groq-sdk");
 const multer = require("multer");
 const db = require("../config/supabaseClient");
+const embeddingService = require("../services/embeddingService");
 
 // ─── Multer (in-memory for OCR) ─────────────────────────────────────────────
 const storage = multer.memoryStorage();
@@ -109,17 +110,43 @@ const scanImage = async (req, res) => {
                 if (r.rows.length > 0) existingVariant = r.rows[0];
             }
 
-            // 2. Fallback: match by product name (case-insensitive)
+            // 2. Fallback: match by product name (case-insensitive + normalized)
             if (!existingVariant && p.name) {
                 const r = await db.query(
                     `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
                      FROM product_variants pv
                      JOIN products p ON p.product_id = pv.product_id
-                     WHERE LOWER(TRIM(p.name)) = LOWER(TRIM($1))
+                     WHERE REPLACE(LOWER(p.name), ' ', '') = REPLACE(LOWER($1), ' ', '')
+                     OR LOWER(TRIM(p.name)) = LOWER(TRIM($1))
                      ORDER BY pv.variant_id ASC LIMIT 1`,
                     [p.name]
                 );
                 if (r.rows.length > 0) existingVariant = r.rows[0];
+            }
+
+            // 3. Fallback: Semantic Match (AI Matching)
+            if (!existingVariant && p.name) {
+                try {
+                    const vec = await embeddingService.embedQuery(p.name);
+                    const vecStr = `[${vec.join(",")}]`;
+                    const r = await db.query(
+                        `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id,
+                                1 - (pe.embedding <=> $1::vector) as similarity
+                         FROM product_embeddings pe
+                         JOIN products p ON p.product_id = pe.product_id
+                         JOIN product_variants pv ON pv.product_id = p.product_id
+                         WHERE p.is_active = true
+                         AND (1 - (pe.embedding <=> $1::vector)) > 0.85
+                         ORDER BY similarity DESC LIMIT 1`,
+                        [vecStr]
+                    );
+                    if (r.rows.length > 0) {
+                        existingVariant = r.rows[0];
+                        console.log(`🤖 OCR Semantic Match: "${p.name}" -> "${existingVariant.product_name}" (sim: ${Number(existingVariant.similarity).toFixed(3)})`);
+                    }
+                } catch (err) {
+                    console.error("Semantic OCR match failing (silently falling back):", err.message);
+                }
             }
 
             return {

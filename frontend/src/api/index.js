@@ -5,7 +5,13 @@ export const BACKEND_URL = 'http://localhost:5000';
 // Convert relative path to full URL for images stored on the backend
 export const getImageUrl = (path) => {
     if (!path) return null;
+    // 1. If it's already a full URL, return it
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    // 2. If it starts with // (protocol-relative), add https
+    if (path.startsWith('//')) return `https:${path}`;
+    // 3. If it looks like a domain starting with www., add https
+    if (path.startsWith('www.')) return `https://${path}`;
+    // 4. Otherwise, assume it's a relative path from our backend
     return `${BACKEND_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 

@@ -19,6 +19,7 @@ const ProductImage = ({ src, alt, className, size = 18 }) => {
             alt={alt}
             className={className}
             onError={() => setError(true)}
+            referrerPolicy="no-referrer"
         />
     );
 };

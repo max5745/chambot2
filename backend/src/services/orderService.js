@@ -1,6 +1,6 @@
 const repo = require("../repositories/orderRepository");
 
-// ─── Valid Status Transitions (matches order_status ENUM in SETUP.sql) ───────
+// ─── Valid Status Transitions (matches order_status ENUM in SCHEMA.sql) ──────
 // ENUM: 'pending','shipped','delivered','cancelled'
 const TRANSITIONS = {
     pending: ["shipped", "cancelled"],

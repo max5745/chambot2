@@ -2,7 +2,7 @@
 /**
  * embeddingService.js
  * -------------------
- * Generates 384-dim embeddings using intfloat/multilingual-e5-small
+ * Generates 768-dim embeddings using intfloat/multilingual-e5-base
  * via @xenova/transformers (ONNX runtime — no Python required).
  *
  * The pipeline is loaded once as a singleton on first use.
@@ -23,9 +23,9 @@ const getPipeline = async () => {
     // Disable local model check — always use HuggingFace Hub cache
     env.allowLocalModels = false;
 
-    console.log("⏳  Loading embedding model: Xenova/multilingual-e5-small …");
-    _pipeline = await pipeline("feature-extraction", "Xenova/multilingual-e5-small");
-    console.log("✅  Embedding model loaded (multilingual-e5-small, 384-dim)");
+    console.log("⏳  Loading embedding model: Xenova/multilingual-e5-base …");
+    _pipeline = await pipeline("feature-extraction", "Xenova/multilingual-e5-base");
+    console.log("✅  Embedding model loaded (multilingual-e5-base, 768-dim)");
     return _pipeline;
 };
 
@@ -51,7 +51,7 @@ const buildText = (product) => {
 
 // ── Mean pooling helper ───────────────────────────────────────────────────────
 const meanPool = (tensor) => {
-    // tensor.data is Float32Array, tensor.dims = [1, seq_len, 384]
+    // tensor.data is Float32Array, tensor.dims = [1, seq_len, 768]
     const [, seqLen, hiddenSize] = tensor.dims;
     const result = new Float32Array(hiddenSize);
     for (let h = 0; h < hiddenSize; h++) {
@@ -74,7 +74,7 @@ const l2Norm = (vec) => {
 
 // ── Core embed function ───────────────────────────────────────────────────────
 /**
- * Embed a text string → Float32Array of 384 values.
+ * Embed a text string → Float32Array of 768 values.
  */
 const embedText = async (text) => {
     const extractor = await getPipeline();
@@ -83,10 +83,10 @@ const embedText = async (text) => {
     // but we do it manually too for safety with this model variant.
     let vec;
     if (output.dims.length === 2) {
-        // shape [1, 384]
+        // shape [1, 768]
         vec = Array.from(output.data);
     } else {
-        // shape [1, seq_len, 384] — manual mean pool
+        // shape [1, seq_len, 768] — manual mean pool
         vec = Array.from(l2Norm(meanPool(output)));
     }
     return vec;

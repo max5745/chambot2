@@ -147,15 +147,47 @@ BEGIN
     created_ts := ('2026-03-'|| LPAD(oday::text,2,'0') ||' 08:00:00+07')::timestamptz
                   + (((i * 7919) % 36000) || ' seconds')::interval;
 
-    -- เลือก user แบบหมุนเวียน
-    rand_u := uid[ (i % array_length(uid,1)) + 1 ];
+  -- ── ORDER 1: สมชาย — กาแฟ 2 ถุง → delivered / paid (55 วันที่แล้ว)
+  -- order_status: 'delivered'  payment_status: 'paid'
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u2, 700.00,'delivered','paid', NOW()-'55 days'::interval, NOW()-'53 days'::interval)
+    RETURNING order_id INTO o1;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o1,v1,350.00,2);
+  -- payment_method: 'qr'  payment_status: 'paid'
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o1,'qr','paid', NOW()-'55 days'::interval);
+  -- shipment_status: 'delivered'
+  INSERT INTO shipments(order_id,address_id,status,tracking_number,shipped_at)
+    VALUES(o1,a2,'delivered','TH-001-SAMPLE', NOW()-'54 days'::interval);
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o1,'pending',  'system','Order created'),
+    (o1,'shipped',  'admin', 'Payment verified & Dispatched via Thailand Post'),
+    (o1,'delivered','system','Parcel delivered');
 
-    -- สุ่ม variant หลัก (1–10)
-    rand_v := ((i * 31 + 7) % 10) + 1;
+  -- ── ORDER 2: สมศักดิ์ — ชาเขียว 1 กล่อง → shipped / paid (40 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u3, 180.00,'shipped','paid', NOW()-'40 days'::interval, NOW()-'38 days'::interval)
+    RETURNING order_id INTO o2;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o2,v2,180.00,1);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o2,'qr','paid', NOW()-'40 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status,tracking_number,shipped_at)
+    VALUES(o2,a3,'shipped','KEX-002-SAMPLE', NOW()-'38 days'::interval);
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o2,'pending',  'system','Order created'),
+    (o2,'shipped',  'admin', 'QR payment confirmed & In transit via Kerry');
 
-    -- สุ่มจำนวน 1–3
-    qty1 := ((i * 13) % 3) + 1;
-    amt  := prices[rand_v] * qty1;
+  -- ── ORDER 3: มาลี — Drip Kettle 1 → shipped / paid (30 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u4, 1200.00,'shipped','paid', NOW()-'30 days'::interval, NOW()-'29 days'::interval)
+    RETURNING order_id INTO o3;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o3,v3,1200.00,1);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o3,'qr','paid', NOW()-'30 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status) VALUES(o3,a4,'preparing');
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o3,'pending',  'system','Order placed'),
+    (o3,'shipped',  'admin', 'QR scanned & Dispatched');
 
     -- บางออเดอร์มี 2 รายการ (ทุก i ที่หาร 3 ลงตัว)
     IF i % 3 = 0 THEN
@@ -170,18 +202,19 @@ BEGIN
       qty2    := 0;
     END IF;
 
-    -- สุ่ม status ตาม weight:
-    --  delivered ~50%, shipped ~25%, pending ~15%, cancelled ~10%
-    CASE ((i * 37) % 10)
-      WHEN 0,1,2,3,4 THEN  -- 50%
-        ostatus := 'delivered'; pstatus := 'paid'; sstat := 'delivered';
-      WHEN 5,6,7 THEN       -- 30%
-        ostatus := 'shipped';   pstatus := 'paid'; sstat := 'shipped';
-      WHEN 8 THEN            -- 10%
-        ostatus := 'pending';   pstatus := 'pending'; sstat := 'preparing';
-      ELSE                   -- 10%
-        ostatus := 'cancelled'; pstatus := 'refunded'; sstat := 'returned';
-    END CASE;
+  -- ── ORDER 5: วิภา — เมล็ดพันธุ์ 1 → delivered / paid (20 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u6, 890.00,'delivered','paid', NOW()-'20 days'::interval, NOW()-'17 days'::interval)
+    RETURNING order_id INTO o5;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o5,v5,890.00,1);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o5,'qr','paid', NOW()-'20 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status,tracking_number,shipped_at)
+    VALUES(o5,a6,'delivered','JT-005-SAMPLE', NOW()-'19 days'::interval);
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o5,'pending', 'system','Order created'),
+    (o5,'shipped', 'admin', 'Payment verified & Out for delivery'),
+    (o5,'delivered','system','Successfully delivered');
 
     -- วิธีชำระเงิน (qr 70%, cod 30%)
     IF i % 10 < 7 THEN
@@ -192,36 +225,47 @@ BEGIN
       IF ostatus = 'pending' THEN pstatus := 'pending'; END IF;
     END IF;
 
-    paid_ts    := CASE WHEN pstatus = 'paid'     THEN created_ts + '10 minutes'::interval ELSE NULL END;
-    shipped_ts := CASE WHEN sstat  IN ('shipped','delivered') THEN created_ts + '1 day'::interval ELSE NULL END;
+  -- ── ORDER 7: พัชรา — เครื่องสีข้าว 1 → delivered / paid (12 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u8, 15500.00,'delivered','paid', NOW()-'12 days'::interval, NOW()-'9 days'::interval)
+    RETURNING order_id INTO o7;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o7,v7,15500.00,1);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o7,'qr','paid', NOW()-'12 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status,tracking_number,shipped_at)
+    VALUES(o7,a8,'delivered','DHL-007-SAMPLE', NOW()-'11 days'::interval);
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o7,'pending', 'system','Large order placed'),
+    (o7,'shipped', 'admin', 'QR payment confirmed & Dispatched via DHL'),
+    (o7,'delivered','system','Signature obtained');
 
-    -- INSERT order
-    INSERT INTO public.orders
-      (user_id, total_amount, status, payment_status,
-       tracking_number, shipping_provider, created_at, updated_at)
-    VALUES (
-      rand_u, amt, ostatus, pstatus,
-      CASE WHEN ostatus IN ('shipped','delivered')
-           THEN 'TH' || LPAD(i::text,4,'0') || '2026MAR'
-           ELSE NULL END,
-      CASE WHEN ostatus IN ('shipped','delivered')
-           THEN providers[ (i % 5) + 1 ]
-           ELSE NULL END,
-      created_ts,
-      created_ts + '1 hour'::interval
-    )
-    RETURNING order_id INTO oid;
+  -- ── ORDER 8: ณิชา — แยม 3 ขวด → shipped / paid (8 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u9, 360.00,'shipped','paid', NOW()-'8 days'::interval, NOW()-'7 days'::interval)
+    RETURNING order_id INTO o8;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o8,v8,120.00,3);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o8,'qr','paid', NOW()-'8 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status,tracking_number,shipped_at)
+    VALUES(o8,a9,'shipped','EE-008-SAMPLE', NOW()-'7 days'::interval);
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o8,'pending', 'system','Order placed'),
+    (o8,'shipped', 'admin', 'Payment received & In transit — EMS');
 
     -- INSERT order_items (รายการแรก)
     INSERT INTO public.order_items (order_id, variant_id, price, quantity)
     VALUES (oid, vids[rand_v], prices[rand_v], qty1);
 
-    -- INSERT order_items (รายการที่สอง ถ้ามี)
-    IF rand_v2 IS NOT NULL THEN
-      INSERT INTO public.order_items (order_id, variant_id, price, quantity)
-      VALUES (oid, vids[rand_v2], prices[rand_v2], qty2)
-      ON CONFLICT DO NOTHING;
-    END IF;
+  -- ── ORDER 10: สมชาย — Farm Trip 2 ที่ → pending / paid (2 วัน)
+  INSERT INTO orders (user_id,total_amount,status,payment_status,created_at,updated_at)
+    VALUES (u2, 3000.00,'pending','paid', NOW()-'2 days'::interval, NOW()-'2 days'::interval)
+    RETURNING order_id INTO o10;
+  INSERT INTO order_items(order_id,variant_id,price,quantity) VALUES(o10,v10,1500.00,2);
+  INSERT INTO payments(order_id,method,status,paid_at)
+    VALUES(o10,'qr','paid', NOW()-'2 days'::interval);
+  INSERT INTO shipments(order_id,address_id,status) VALUES(o10,a2,'preparing');
+  INSERT INTO order_status_logs(order_id,status,changed_by,note) VALUES
+    (o10,'pending',  'system','Trip reservation');
 
     -- INSERT payment
     INSERT INTO public.payments (order_id, method, status, paid_at, created_at)

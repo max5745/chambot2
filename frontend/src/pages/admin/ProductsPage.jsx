@@ -303,7 +303,7 @@ const ProductsPage = () => {
                 </div>
                 <div className="products-actions">
                     <div className="admin-search-wrap" style={{ gap: 6, padding: '6px 12px' }}>
-                        <Filter size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        <Filter size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                         <select className="admin-search-input" value={filterCategory}
                             onChange={e => setFilterCategory(e.target.value)} style={{ width: 140, cursor: 'pointer' }}>
                             <option value="">ทุกหมวดหมู่</option>
@@ -354,7 +354,7 @@ const ProductsPage = () => {
                         {tab.label}
                         <span style={{
                             background: filterStatus === tab.key ? 'rgba(170,93,198,0.15)' : 'var(--bg-surface)',
-                            color: filterStatus === tab.key ? '#000000' : 'var(--text-muted)',
+                            color: filterStatus === tab.key ? '#000000' : 'var(--text-secondary)',
                             borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 700,
                         }}>{tab.count}</span>
                     </button>
@@ -418,9 +418,9 @@ const ProductsPage = () => {
                                     <td><div className="product-thumb"><ProductImage src={p.image_url} alt={p.product_name} /></div></td>
                                     <td>
                                         <div style={{ fontWeight: 700, fontSize: 14 }}>{p.product_name}</div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{p.variant_count || 0} variant</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.variant_count || 0} variant</div>
                                     </td>
-                                    <td>{p.category_name ? <span className="badge badge-purple">{p.category_name}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                                    <td>{p.category_name ? <span className="badge badge-purple">{p.category_name}</span> : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
                                     <td><span style={{ fontWeight: 700, color: '#AA5DC6' }}>{p.min_price ? formatPrice(p.min_price) : '—'}</span></td>
                                     <td>
                                         {p.total_stock <= (p.low_stock_threshold || 5)
@@ -505,7 +505,7 @@ const ProductsPage = () => {
                                                         // Find most common unit among variants
                                                         const units = selectedProduct.variants?.map(v => v.unit).filter(Boolean) || [];
                                                         const unit = units.length > 0 ? units[0] : 'ชิ้น';
-                                                        return <>{totalStock}<span style={{ fontSize: 16, color: 'var(--text-muted)', marginLeft: 6 }}>{unit}</span></>;
+                                                        return <>{totalStock}<span style={{ fontSize: 16, color: 'var(--text-secondary)', marginLeft: 6 }}>{unit}</span></>;
                                                     })()}
                                                 </div>
                                             </div>
@@ -586,7 +586,7 @@ const ProductsPage = () => {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                             <span style={{ fontSize: 13, fontWeight: 700, color: '#000000' }}>AI Embedding</span>
                                             {embeddingInfo === null ? (
-                                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>กำลังตรวจสอบ...</span>
+                                                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>กำลังตรวจสอบ...</span>
                                             ) : embeddingInfo.has_embedding ? (
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.12)', padding: '2px 8px', borderRadius: 99 }}>✓ มี Embedding</span>
                                             ) : (
@@ -595,11 +595,11 @@ const ProductsPage = () => {
                                         </div>
                                         {embeddingInfo?.has_embedding && (
                                             <>
-                                                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>
+                                                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-secondary)' }}>
                                                     อัปเดตล่าสุด: {new Date(embeddingInfo.updated_at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
                                                 </p>
                                                 {embeddingInfo.text_used && (
-                                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
+                                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
                                                         title={embeddingInfo.text_used}>
                                                         📝 {embeddingInfo.text_used.slice(0, 120)}{embeddingInfo.text_used.length > 120 ? '…' : ''}
                                                     </p>
@@ -753,7 +753,7 @@ const ProductsPage = () => {
                                                 </label>
                                             </div>
                                             {v.image_url && <img src={getImageUrl(v.image_url)} alt="preview" className="image-preview" />}
-                                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                                                 📐 แนะนำขนาด <strong style={{ color: 'var(--text-secondary)' }}>800×800 px</strong> ขึ้นไป, อัตราส่วน 1:1<br />
                                                 🖼️ รองรับไฟล์: <strong style={{ color: 'var(--text-secondary)' }}>JPG, PNG, WEBP</strong> · ขนาดไม่เกิน 5 MB
                                             </p>

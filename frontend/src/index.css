@@ -466,8 +466,8 @@ select.input-field option {
 .data-table th {
   text-align: left;
   padding: 14px 16px;
-  color: var(--text-muted);
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: 700;
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;

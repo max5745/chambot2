@@ -18,17 +18,17 @@ const fmtDate = (d) => {
 
 // ─── Status definitions (matches order_status ENUM in SCHEMA.sql) ───────────
 const STATUS = {
-    pending:   { th: 'รอยืนยัน',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',   icon: <Clock size={13} /> },
-    shipped:   { th: 'กำลังจัดส่ง 🛵',   color: '#a855f7', bg: 'rgba(168,85,247,0.12)',   icon: <Truck size={13} /> },
-    delivered: { th: 'ส่งถึงแล้ว ✅',    color: '#10b981', bg: 'rgba(16,185,129,0.12)',  icon: <CheckCircle2 size={13} /> },
-    cancelled: { th: 'ยกเลิก',           color: '#ef4444', bg: 'rgba(239,68,68,0.1)',     icon: <XCircle size={13} /> },
+    pending: { th: 'รอยืนยัน', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: <Clock size={13} /> },
+    shipped: { th: 'กำลังจัดส่ง 🛵', color: '#a855f7', bg: 'rgba(168,85,247,0.12)', icon: <Truck size={13} /> },
+    delivered: { th: 'ส่งถึงแล้ว ✅', color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: <CheckCircle2 size={13} /> },
+    cancelled: { th: 'ยกเลิก', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: <XCircle size={13} /> },
 };
 
 // Workflow: pending → shipped → delivered
 //           pending → cancelled (requires note)
 const QUICK_NEXT = {
     pending: [
-        { to: 'shipped',   label: '✅ ยืนยัน / จัดส่ง', primary: true },
+        { to: 'shipped', label: '✅ ยืนยัน / จัดส่ง', primary: true },
         { to: 'cancelled', label: '✖ ยกเลิก', primary: false, requireNote: true },
     ],
     shipped: [
@@ -288,15 +288,15 @@ function OrderCard({ order, onOpen, onQuickUpdate }) {
             {/* Cancel info for cancelled orders */}
             {order.status === 'cancelled' && (order.cancel_note || order.cancelled_by) && (
                 <div style={{
-                    marginTop: 8, padding: '8px 12px', borderRadius: 8,
-                    background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)',
-                    fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6,
+                    marginTop: 8, padding: '10px 14px', borderRadius: 12,
+                    background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.12)',
+                    fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6,
                 }}>
                     {order.cancel_note && (
-                        <div><span style={{ color: 'rgba(239,68,68,0.8)', fontWeight: 600 }}>เหตุผล: </span>{order.cancel_note}</div>
+                        <div><span style={{ color: 'var(--danger)', fontWeight: 700 }}>เหตุผล: </span>{order.cancel_note}</div>
                     )}
                     {order.cancelled_by && (
-                        <div style={{ color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                        <div style={{ color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', fontSize: 12 }}>
                             ยกเลิกโดย: {order.cancel_by_name || order.cancel_by_phone || order.cancelled_by}
                         </div>
                     )}

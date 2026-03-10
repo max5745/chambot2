@@ -738,7 +738,28 @@ function FinancialTab({ start, end }) {
 
     if (loading) return <Skeleton />;
     if (!data) return null;
-    const { summary, by_status, by_payment_method } = data;
+    const { summary, by_status, by_payment_method, by_shipping_method = [] } = data;
+
+    // Filter statuses to only delivered and cancelled
+    const filteredStatus = [
+        { status: 'delivered', label: 'ส่งมอบแล้ว', color: '#10b981' },
+        { status: 'cancelled', label: 'ยกเลิก', color: '#ef4444' }
+    ].map(s => {
+        const found = by_status.find(b => b.status === s.status);
+        return { ...s, count: Number(found?.count || 0) };
+    });
+
+    const statusTotal = filteredStatus.reduce((sum, s) => sum + s.count, 0);
+    const statusPieData = statusTotal > 0 ? filteredStatus : filteredStatus.map(s => ({ ...s, count: 50 }));
+
+    // Shipping Methods logic
+    const shipTotal = by_shipping_method.reduce((sum, s) => sum + Number(s.count || 0), 0);
+    const shipPieData = shipTotal > 0
+        ? by_shipping_method.map((s, i) => ({ ...s, name: s.shipping_provider || 'ไม่ระบุ', count: Number(s.count), color: COLORS[i % COLORS.length] }))
+        : [
+            { name: 'ไม่มีข้อมูล', count: 50, color: '#e5e7eb' },
+            { name: '—', count: 50, color: '#f3f4f6' }
+        ];
 
     return (
         <div className="rpt-tab-content">
@@ -751,17 +772,48 @@ function FinancialTab({ start, end }) {
 
             <div className="rpt-two-col">
                 <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">📊 ออเดอร์แยกตามสถานะ</h3>
+                    <h3 className="rpt-chart-title">📊 สัดส่วนออเดอร์ (สำเร็จ/ยกเลิก)</h3>
                     <ResponsiveContainer width="100%" height={260}>
                         <PieChart>
-                            <Pie data={by_status} dataKey="count" nameKey="status"
-                                cx="50%" cy="50%" outerRadius={80}
-                                label={({ status, percent }) => `${status} ${(percent * 100).toFixed(0)}% `}
-                                labelLine={true}>
-                                {by_status.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            <Pie
+                                data={statusPieData}
+                                dataKey="count"
+                                nameKey="label"
+                                cx="50%" cy="50%"
+                                outerRadius={80}
+                                label={({ label, percent }) => `${label} ${statusTotal > 0 ? (percent * 100).toFixed(0) : 0}%`}
+                                labelLine={true}
+                            >
+                                {statusPieData.map((s, i) => <Cell key={i} fill={s.color} />)}
                             </Pie>
-                            <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
-                                formatter={v => [num(v), 'จำนวน']} />
+                            <Tooltip
+                                contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
+                                formatter={(v, n, p) => [statusTotal > 0 ? num(v) : 0, 'จำนวน']}
+                            />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div className="rpt-chart-card">
+                    <h3 className="rpt-chart-title">🚚 วิธีการส่ง (Shipping)</h3>
+                    <ResponsiveContainer width="100%" height={260}>
+                        <PieChart>
+                            <Pie
+                                data={shipPieData}
+                                dataKey="count"
+                                nameKey="name"
+                                cx="50%" cy="50%"
+                                outerRadius={80}
+                                label={({ name, percent }) => `${name} ${shipTotal > 0 ? (percent * 100).toFixed(0) : 0}%`}
+                                labelLine={true}
+                            >
+                                {shipPieData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                            </Pie>
+                            <Tooltip
+                                contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
+                                formatter={(v) => [shipTotal > 0 ? num(v) : 0, 'จำนวน']}
+                            />
                             <Legend verticalAlign="bottom" height={36} iconType="circle" />
                         </PieChart>
                     </ResponsiveContainer>

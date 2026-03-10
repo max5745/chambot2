@@ -321,7 +321,7 @@ const getCustomerReport = async ({ startDate, endDate }) => {
 const getFinancialSummary = async ({ startDate, endDate }) => {
     const params = [];
     const dClauses = dateRange("o", startDate, endDate, params);
-    const [revenue, statusBreakdown, paymentMethods] = await Promise.all([
+    const [revenue, statusBreakdown, paymentMethods, shippingMethods] = await Promise.all([
         // Summary: Delivered only
         db.query(
             `SELECT
@@ -356,6 +356,16 @@ const getFinancialSummary = async ({ startDate, endDate }) => {
              WHERE ${dClauses.join(" AND ")}
              GROUP BY p.method ORDER BY total DESC`, params
         ),
+
+        // shippingMethods: All statuses in range
+        db.query(
+            `SELECT
+                shipping_provider,
+                COUNT(*)::int AS count
+             FROM orders o
+             WHERE ${dClauses.join(" AND ")}
+             GROUP BY shipping_provider ORDER BY count DESC`, params
+        ),
     ]);
 
     const rev = revenue.rows[0];
@@ -363,6 +373,7 @@ const getFinancialSummary = async ({ startDate, endDate }) => {
         summary: rev,
         by_status: statusBreakdown.rows,
         by_payment_method: paymentMethods.rows,
+        by_shipping_method: shippingMethods.rows,
     };
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -119,7 +120,7 @@ function DrillDown({ period, groupBy, onClose }) {
                 <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
                     {[['revenue', '💰 ยอดขาย'], ['units_sold', '📦 จำนวน']].map(([k, l]) => (
                         <button key={k}
-                            className={`btn btn-sm ${sortBy === k ? 'btn-primary' : 'btn-secondary'}`}
+                            className={`btn btn - sm ${sortBy === k ? 'btn-primary' : 'btn-secondary'} `}
                             onClick={() => setSortBy(k)}>{l}</button>
                     ))}
                 </div>
@@ -135,12 +136,12 @@ function DrillDown({ period, groupBy, onClose }) {
                                 padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
                             }}>
                                 <span style={{ fontSize: 15, minWidth: 24, color: i < 3 ? '#f59e0b' : '#6b7280', fontWeight: 700 }}>
-                                    {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}`}
+                                    {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1} `}
                                 </span>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.88)' }}>{p.product_name}</div>
                                     <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 4 }}>
-                                        <div style={{ width: `${(val / max * 100).toFixed(0)}%`, height: '100%', background: CAT_COLORS[i % CAT_COLORS.length], borderRadius: 2 }} />
+                                        <div style={{ width: `${(val / max * 100).toFixed(0)}% `, height: '100%', background: CAT_COLORS[i % CAT_COLORS.length], borderRadius: 2 }} />
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right', minWidth: 80 }}>
@@ -180,7 +181,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
     // Build period label for drill-down
     const getDrillPeriod = (row) => {
         const date = row._date || row.period; // _date is actual ISO date; period may be display label
-        if (groupBy === 'hour') return { start, end, label: `${start} เวลา ${row.period}` };
+        if (groupBy === 'hour') return { start, end, label: `${start} เวลา ${row.period} ` };
         return { start: date, end: date, label: date };
     };
 
@@ -241,10 +242,11 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
     return (
         <div className="rpt-tab-content">
             {/* Summary */}
-            <div className="rpt-stat-grid">
-                <StatCard label="รายได้รวม" value={fmt(summary.total_revenue)} accent="#10b981" />
+            <div className="rpt-stat-grid rpt-stat-grid-4">
+                <StatCard label="ยอดขายรวม" value={fmt(summary.total_revenue)} accent="#10b981" />
                 <StatCard label="คำสั่งซื้อทั้งหมด" value={num(summary.total_orders)} accent="#6366f1" />
-                <StatCard label="เฉลี่ย/ออเดอร์" value={fmt(summary.avg_order_value)} accent="#f59e0b" />
+                <StatCard label="ออเดอร์มากสุด" value={fmt(summary.max_order)} accent="#f59e0b" />
+                <StatCard label="ออเดอร์ต่ำสุด" value={fmt(summary.min_order)} accent="#06b6d4" />
             </div>
 
             {/* Bar chart */}
@@ -258,7 +260,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                     </h3>
                     <div className="rpt-chart-toggle" style={{ display: 'flex', background: 'var(--bg-surface)', padding: 3, borderRadius: 8, border: '1px solid var(--border)' }}>
                         <button
-                            className={`btn btn-sm ${chartType === 'bar' ? 'active-toggle' : ''}`}
+                            className={`btn btn - sm ${chartType === 'bar' ? 'active-toggle' : ''} `}
                             onClick={() => setChartType('bar')}
                             style={{
                                 padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -268,7 +270,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                             }}
                         >เเท่ง</button>
                         <button
-                            className={`btn btn-sm ${chartType === 'line' ? 'active-toggle' : ''}`}
+                            className={`btn btn - sm ${chartType === 'line' ? 'active-toggle' : ''} `}
                             onClick={() => setChartType('line')}
                             style={{
                                 padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -300,7 +302,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                                         cursor={{ fill: 'var(--bg-surface)', opacity: 0.5 }}
                                         contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}
                                         itemStyle={{ fontSize: 13, color: '#1e293b' }}
-                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'ยอดขาย' : 'ออเดอร์']}
                                         labelStyle={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}
                                     />
                                     <Bar dataKey="revenue" name="revenue" radius={[6, 6, 0, 0]} style={{ cursor: 'pointer' }}>
@@ -327,7 +329,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                                     <Tooltip
                                         contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}
                                         itemStyle={{ fontSize: 13, color: '#1e293b' }}
-                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'รายได้' : 'ออเดอร์']}
+                                        formatter={(v, n) => [n === 'revenue' ? fmt(v) : num(v) + '  ออเดอร์', n === 'revenue' ? 'ยอดขาย' : 'ออเดอร์']}
                                         labelStyle={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}
                                     />
                                     <Line
@@ -349,7 +351,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
             {/* Category breakdown */}
             {by_category.length > 0 && (
                 <div className="rpt-chart-card">
-                    <h3 className="rpt-chart-title">🏷️ หมวดหมู่สินค้า</h3>
+                    <h3 className="rpt-chart-title" style={{ color: '#000000' }}>🏷️ หมวดหมู่สินค้า</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
                         {by_category.map((c, i) => {
                             const rev = Number(c.revenue || 0);
@@ -360,7 +362,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                                     <div style={{
                                         width: 44, height: 44, borderRadius: 12, flexShrink: 0,
                                         background: CAT_COLORS[i % CAT_COLORS.length] + '22',
-                                        border: `2px solid ${CAT_COLORS[i % CAT_COLORS.length]}44`,
+                                        border: `2px solid ${CAT_COLORS[i % CAT_COLORS.length]} 44`,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: 18,
                                     }}>{'🏷️'}</div>
@@ -368,7 +370,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                                     {/* Name + bar */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#000000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {c.category_name}
                                             </span>
                                             <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginLeft: 8, flexShrink: 0 }}>
@@ -378,7 +380,7 @@ function SalesTab({ start, end, groupBy, onDrillDay }) {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
                                                 <div style={{
-                                                    width: `${share.toFixed(1)}%`, height: '100%',
+                                                    width: `${share.toFixed(1)}% `, height: '100%',
                                                     background: CAT_COLORS[i % CAT_COLORS.length],
                                                     borderRadius: 3, transition: 'width 0.4s ease',
                                                 }} />
@@ -413,7 +415,7 @@ function RankTable({ title, data, rankBy, valueKey, valueLabel, valueFormat, acc
                     <tr>
                         <th style={{ width: 32 }}>#</th>
                         <th>สินค้า</th>
-                        <th>หมวดหมู่</th>
+                        <th style={{ color: '#000000' }}>หมวดหมู่</th>
                         <th style={{ textAlign: 'right', minWidth: 90 }}>{valueLabel}</th>
                     </tr>
                 </thead>
@@ -441,7 +443,7 @@ function RankTable({ title, data, rankBy, valueKey, valueLabel, valueFormat, acc
                             </td>
                             <td>
                                 {p.category_name
-                                    ? <span className="badge badge-cyan" style={{ fontSize: 11 }}>{p.category_name}</span>
+                                    ? <span className="badge badge-cyan" style={{ fontSize: 11, color: '#000000' }}>{p.category_name}</span>
                                     : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -453,7 +455,7 @@ function RankTable({ title, data, rankBy, valueKey, valueLabel, valueFormat, acc
                                     {data.length > 0 && (
                                         <div style={{ width: 70, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
                                             <div style={{
-                                                width: `${Math.round((p[valueKey] / data[0][valueKey]) * 100)}%`,
+                                                width: `${Math.round((p[valueKey] / data[0][valueKey]) * 100)}% `,
                                                 height: '100%',
                                                 background: accentColor,
                                                 borderRadius: 2,
@@ -493,7 +495,7 @@ function ProductsTab({ start, end }) {
 
     if (loading) return <Skeleton />;
     if (!data) return null;
-    const { top_selling = [], top_by_revenue = [], low_selling = [] } = data;
+    const { top_selling = [], top_by_revenue = [], low_selling = [], by_category = [] } = data;
 
     return (
         <div className="rpt-tab-content">
@@ -517,24 +519,26 @@ function ProductsTab({ start, end }) {
                 />
             </div>
 
-            {/* ── Bar chart: units sold ── */}
+            {/* ── Category Performance Chart ── */}
             <div className="rpt-chart-card">
-                <h3 className="rpt-chart-title">📊 เปรียบเทียบจำนวนชิ้นขาย vs ยอดขาย (Top 10)</h3>
-                {top_selling.length > 0 ? (
+                <h3 className="rpt-chart-title" style={{ color: '#000000' }}>📊 ยอดขายแยกตามหมวดหมู่ (Category Performance)</h3>
+                {by_category.length > 0 ? (
                     <ResponsiveContainer width="100%" height={260}>
-                        <BarChart data={top_selling.slice(0, 10)} margin={{ left: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                            <XAxis dataKey="product_name" tick={{ fill: '#9ca3af', fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={50} />
-                            <YAxis yAxisId="left" tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                            <YAxis yAxisId="right" orientation="right" tick={{ fill: '#9ca3af', fontSize: 10 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
+                        <BarChart data={by_category} margin={{ left: 10, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                            <XAxis dataKey="category_name" tick={{ fill: '#000000', fontSize: 11, fontWeight: 600 }} interval={0} />
+                            <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={v => '฿' + (v / 1000).toFixed(0) + 'k'} />
                             <Tooltip
-                                contentStyle={{ background: '#13151f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-                                itemStyle={{ fontSize: 13 }}
-                                formatter={(v, n) => n === 'units_sold' ? [`${num(v)} ชิ้น`, 'จำนวน'] : [fmt(v), 'ยอดขาย']}
+                                contentStyle={{ background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                                itemStyle={{ fontSize: 13, color: '#000000' }}
+                                labelStyle={{ color: '#64748b', fontWeight: 600, marginBottom: 4 }}
+                                formatter={(v) => [fmt(v), 'ยอดขาย']}
                             />
-                            <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
-                            <Bar yAxisId="left" dataKey="units_sold" name="จำนวน (ชิ้น)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                            <Bar yAxisId="right" dataKey="revenue" name="ยอดขาย (฿)" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="revenue" name="ยอดขาย" radius={[6, 6, 0, 0]}>
+                                {by_category.map((_, i) => (
+                                    <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} />
+                                ))}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 ) : <p className="rpt-empty">ไม่มีข้อมูล</p>}
@@ -542,13 +546,13 @@ function ProductsTab({ start, end }) {
 
             {/* ── Low Selling ── */}
             <div className="rpt-chart-card">
-                <h3 className="rpt-chart-title">📉 สินค้าขายช้า (ยอดขาย &lt; 5 ชิ้น)</h3>
+                <h3 className="rpt-chart-title">📉 สินค้าขายช้า (ไม่มีการขาย {'>'} 7 วัน)</h3>
                 <table className="data-table rpt-table">
                     <thead>
                         <tr>
                             <th>สินค้า</th>
-                            <th>หมวดหมู่</th>
-                            <th style={{ textAlign: 'right' }}>ขายได้</th>
+                            <th style={{ color: '#000000' }}>หมวดหมู่</th>
+                            <th style={{ textAlign: 'right' }}>ขายล่าสุด</th>
                             <th style={{ textAlign: 'right' }}>คงเหลือ</th>
                         </tr>
                     </thead>
@@ -558,10 +562,12 @@ function ProductsTab({ start, end }) {
                                 <td style={{ fontSize: 13 }}>{p.product_name}</td>
                                 <td>
                                     {p.category_name
-                                        ? <span className="badge badge-cyan" style={{ fontSize: 11 }}>{p.category_name}</span>
+                                        ? <span className="badge badge-cyan" style={{ fontSize: 11, color: '#000000' }}>{p.category_name}</span>
                                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                 </td>
-                                <td style={{ color: '#f59e0b', textAlign: 'right', fontWeight: 600 }}>{num(p.units_sold)} ชิ้น</td>
+                                <td style={{ color: '#f59e0b', textAlign: 'right', fontWeight: 600, fontSize: 12 }}>
+                                    {p.last_sale ? new Date(p.last_sale).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) : 'ไม่มีประวัติ'}
+                                </td>
                                 <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{num(p.stock_remaining)}</td>
                             </tr>
                         ))}
@@ -736,27 +742,28 @@ function FinancialTab({ start, end }) {
 
     return (
         <div className="rpt-tab-content">
-            <div className="rpt-stat-grid rpt-stat-grid-5">
-                <StatCard label="รายได้รวม" value={fmt(summary.total_revenue)} accent="#10b981" />
+            <div className="rpt-stat-grid rpt-stat-grid-4">
+                <StatCard label="ยอดขายรวม" value={fmt(summary.total_revenue)} accent="#10b981" />
                 <StatCard label="คำสั่งซื้อ" value={num(summary.total_orders)} accent="#6366f1" />
-                <StatCard label="ค่าเฉลี่ย/ออเดอร์" value={fmt(summary.avg_order_value)} accent="#f59e0b" />
-                <StatCard label="ออเดอร์เล็กสุด" value={fmt(summary.min_order)} accent="#06b6d4" />
-                <StatCard label="ออเดอร์ใหญ่สุด" value={fmt(summary.max_order)} accent="#ec4899" />
+                <StatCard label="ออเดอร์มากสุด" value={fmt(summary.max_order)} accent="#ec4899" />
+                <StatCard label="ออเดอร์ต่ำสุด" value={fmt(summary.min_order)} accent="#06b6d4" />
             </div>
 
             <div className="rpt-two-col">
                 <div className="rpt-chart-card">
                     <h3 className="rpt-chart-title">📊 ออเดอร์แยกตามสถานะ</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={by_status}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                            <XAxis dataKey="status" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                            <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                            <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }} />
-                            <Bar dataKey="count" name="จำนวน" radius={[4, 4, 0, 0]}>
+                    <ResponsiveContainer width="100%" height={260}>
+                        <PieChart>
+                            <Pie data={by_status} dataKey="count" nameKey="status"
+                                cx="50%" cy="50%" outerRadius={80}
+                                label={({ status, percent }) => `${status} ${(percent * 100).toFixed(0)}% `}
+                                labelLine={true}>
                                 {by_status.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Bar>
-                        </BarChart>
+                            </Pie>
+                            <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
+                                formatter={v => [num(v), 'จำนวน']} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                        </PieChart>
                     </ResponsiveContainer>
                 </div>
 
@@ -765,7 +772,7 @@ function FinancialTab({ start, end }) {
                     <ResponsiveContainer width="100%" height={220}>
                         <PieChart>
                             <Pie data={by_payment_method} dataKey="count" nameKey="method"
-                                cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name || 'N/A'} ${(percent * 100).toFixed(0)}%`}
+                                cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name || 'N/A'} ${(percent * 100).toFixed(0)}% `}
                                 labelLine={false}>
                                 {by_payment_method.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                             </Pie>
@@ -810,7 +817,7 @@ const getPeriodFromDate = (type, sel) => {
         const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
         return {
             start: toISO(mon), end: toISO(sun), groupBy: 'day',
-            label: `${thShort.format(mon)} – ${thShort.format(sun)}`
+            label: `${thShort.format(mon)} – ${thShort.format(sun)} `
         };
     }
     const first = new Date(sel.getFullYear(), sel.getMonth(), 1);
@@ -851,9 +858,9 @@ function MiniCalendar({ type, selected, onSelect }) {
     const isFuture = (d) => d && d > today;
 
     const CAL_STYLE = {
-        position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 999,
-        background: '#181926', border: '1px solid rgba(255,255,255,0.12)',
-        borderRadius: 16, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+        position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 999,
+        background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)',
+        borderRadius: 16, padding: 16, boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         minWidth: 280, userSelect: 'none',
     };
     const MONTH_NAMES = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -862,7 +869,7 @@ function MiniCalendar({ type, selected, onSelect }) {
         <div style={CAL_STYLE}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setViewYear(y => y - 1)}>&#8592;</button>
-                <span style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)' }}>{viewYear + 543}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#000000' }}>{viewYear + 543}</span>
                 <button className="btn btn-secondary btn-sm"
                     onClick={() => setViewYear(y => y + 1)}
                     disabled={viewYear >= today.getFullYear()}>&#8594;</button>
@@ -876,8 +883,8 @@ function MiniCalendar({ type, selected, onSelect }) {
                             disabled={isFut}
                             style={{
                                 padding: '6px 2px', borderRadius: 8, fontSize: 12, border: 'none', cursor: isFut ? 'default' : 'pointer',
-                                background: isSel ? '#6366f1' : 'rgba(255,255,255,0.04)',
-                                color: isSel ? '#fff' : isFut ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.8)',
+                                background: isSel ? '#6366f1' : 'rgba(0,0,0,0.04)',
+                                color: isSel ? '#fff' : isFut ? 'rgba(0,0,0,0.15)' : '#000000',
                                 fontWeight: isSel ? 700 : 400,
                             }}
                             onClick={() => { onSelect(new Date(viewYear, i, 1)); }}
@@ -893,7 +900,7 @@ function MiniCalendar({ type, selected, onSelect }) {
             {/* Month nav */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <button className="btn btn-secondary btn-sm" onClick={prevMonth}>&#8592;</button>
-                <span style={{ fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#000000' }}>
                     {MONTH_NAMES[viewMonth]} {viewYear + 543}
                 </span>
                 <button className="btn btn-secondary btn-sm"
@@ -916,9 +923,9 @@ function MiniCalendar({ type, selected, onSelect }) {
                                 textAlign: 'center', padding: '5px 2px', borderRadius: 6, fontSize: 12,
                                 cursor: d && !fut ? 'pointer' : 'default',
                                 background: sel ? '#6366f1' :
-                                    (tod && !sel) ? 'rgba(99,102,241,0.2)' : 'transparent',
-                                color: sel ? '#fff' : fut ? 'rgba(255,255,255,0.2)' :
-                                    d ? 'rgba(255,255,255,0.85)' : 'transparent',
+                                    (tod && !sel) ? 'rgba(99,102,241,0.1)' : 'transparent',
+                                color: sel ? '#fff' : fut ? 'rgba(0,0,0,0.15)' :
+                                    d ? '#000000' : 'transparent',
                                 fontWeight: tod || sel ? 700 : 400,
                                 outline: tod && !sel ? '1px solid rgba(99,102,241,0.5)' : 'none',
                                 transition: 'all 0.1s',
@@ -932,7 +939,23 @@ function MiniCalendar({ type, selected, onSelect }) {
 }
 
 export default function ReportPage() {
-    const [tab, setTab] = useState('sales');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'sales';
+    const [tab, setTab] = useState(initialTab);
+
+    // Sync tab with URL
+    useEffect(() => {
+        const urlTab = searchParams.get('tab');
+        if (urlTab && TABS.find(t => t.id === urlTab)) {
+            setTab(urlTab);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (tabId) => {
+        setTab(tabId);
+        setSearchParams({ tab: tabId });
+    };
+
     const [type, setType] = useState('day');
     const [sel, setSel] = useState(new Date());
     const [calOpen, setCalOpen] = useState(false);
@@ -963,7 +986,7 @@ export default function ReportPage() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
                 {[['day', '◕ รายวัน'], ['week', '📆 รายสัปดาห์'], ['month', '📅 รายเดือน']].map(([k, l]) => (
                     <button key={k}
-                        className={`btn btn-sm ${type === k ? 'btn-primary' : 'btn-secondary'}`}
+                        className={`btn btn - sm ${type === k ? 'btn-primary' : 'btn-secondary'} `}
                         style={{ fontWeight: type === k ? 700 : 400, fontSize: 13 }}
                         onClick={() => changeType(k)}>{l}</button>
                 ))}
@@ -976,7 +999,8 @@ export default function ReportPage() {
                         className="btn btn-secondary btn-sm"
                         style={{
                             fontSize: 13, fontWeight: 600, minWidth: 200,
-                            color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: 8
+                            color: '#000000', display: 'flex', alignItems: 'center', gap: 8,
+                            background: '#ffffff', border: '1px solid rgba(0,0,0,0.1)'
                         }}
                         onClick={() => setCalOpen(o => !o)}
                     >
@@ -991,7 +1015,7 @@ export default function ReportPage() {
             <div className="rpt-tab-bar">
                 {TABS.map(t => {
                     const Icon = t.icon; return (
-                        <button key={t.id} className={`rpt-tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+                        <button key={t.id} className={`rpt - tab - btn ${tab === t.id ? 'active' : ''} `} onClick={() => handleTabChange(t.id)}>
                             <Icon size={15} />{t.label}
                         </button>
                     );
@@ -1003,7 +1027,6 @@ export default function ReportPage() {
                     // FIX: set sel first, then type — must NOT call changeType() which resets sel to today
                     setSel(new Date(isoDate + 'T00:00:00'));
                     setType('day');
-                    setCalOpen(false);
                 }}
             />}
             {tab === 'products' && <ProductsTab start={start} end={end} />}

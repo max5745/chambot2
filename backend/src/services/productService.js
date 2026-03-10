@@ -222,4 +222,21 @@ const toggle = async (id) => {
     return r.rows[0];
 };
 
-module.exports = { getAll, getById, create, update, softDelete, toggle };
+/**
+ * Hard delete product + variants.
+ */
+const remove = async (id) => {
+    await db.query('BEGIN');
+    try {
+        await db.query('DELETE FROM product_variants WHERE product_id=$1', [id]);
+        const r = await db.query('DELETE FROM products WHERE product_id=$1 RETURNING *', [id]);
+        if (r.rows.length === 0) throw Object.assign(new Error('Product not found'), { status: 404 });
+        await db.query('COMMIT');
+        return r.rows[0];
+    } catch (e) {
+        await db.query('ROLLBACK');
+        throw e;
+    }
+};
+
+module.exports = { getAll, getById, create, update, softDelete, toggle, remove };

@@ -1,17 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import {
     Package, ShoppingBag, AlertTriangle,
-    ArrowUp, ChevronRight, DollarSign, Eye, Plus, Clock
+    ArrowUp, ChevronRight, DollarSign, Eye, Plus, Clock,
+    TrendingUp, Archive, Users
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { getProducts, getAdminOrders, getLowStockProducts } from '../../api';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+    getProducts, getAdminOrders, getLowStockProducts,
+    getSalesReport, getProductReport, getCustomerReport, getFinancialReport
+} from '../../api';
+import { BarChart, Bar, ResponsiveContainer, Cell } from 'recharts';
 import ProductImage from '../../components/ProductImage';
 import './DashboardPage.css';
 
-const StatCard = ({ icon, label, value, color, sub, trend, trendUp }) => (
-    <div className="stat-card card">
-        <div className="stat-card-icon" style={{ background: color }}>
-            {icon}
+const MiniChart = ({ data, color }) => (
+    <div style={{ width: '100%', height: 40, marginTop: 10 }}>
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+                <Bar dataKey="value" fill={color} radius={[2, 2, 0, 0]} />
+            </BarChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+const StatCard = ({ icon, label, value, color, sub, trend, trendUp, onClick, chartData }) => (
+    <div className={`stat-card card ${onClick ? 'clickable' : ''}`} onClick={onClick}>
+        <div className="stat-card-top">
+            <div className="stat-card-icon" style={{ background: color }}>
+                {icon}
+            </div>
+            {onClick && <ChevronRight size={14} className="stat-card-arrow" />}
         </div>
         <div className="stat-card-info">
             <p className="stat-card-label">{label}</p>
@@ -23,12 +41,23 @@ const StatCard = ({ icon, label, value, color, sub, trend, trendUp }) => (
                 </p>
             )}
             {sub && !trend && <p className="stat-card-sub">{sub}</p>}
+            {chartData && <MiniChart data={chartData} color={color.replace('0.15', '0.5').replace('0.12', '0.5')} />}
         </div>
     </div>
 );
 
 const DashboardPage = () => {
-    const [stats, setStats] = useState({ products: 0, orders: 0, lowStock: 0, pending: 0, revenue: 0 });
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({
+        products: 0,
+        orders: 0,
+        lowStock: 0,
+        pending: 0,
+        revenue: 0,
+        revenueData: [],
+        orderData: [],
+        customerCount: 0
+    });
     const [lowStockItems, setLowStockItems] = useState([]);
     const [recentOrders, setRecentOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -36,11 +65,17 @@ const DashboardPage = () => {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                const [prodRes, adminOrdersRes, lowRes, pendingRes] = await Promise.allSettled([
+                const today = new Date().toISOString().slice(0, 10);
+                const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+                const [prodRes, adminOrdersRes, lowRes, salesRes, customerRes, todaySalesRes, todayCustomerRes] = await Promise.allSettled([
                     getProducts(),
                     getAdminOrders({ limit: 6 }),
                     getLowStockProducts(),
-                    getAdminOrders({ status: 'pending', limit: 1 }),
+                    getSalesReport({ startDate: lastWeek, endDate: today, groupBy: 'day' }),
+                    getCustomerReport({ startDate: lastWeek, endDate: today }),
+                    getSalesReport({ startDate: today, endDate: today, groupBy: 'hour' }),
+                    getCustomerReport({ startDate: today, endDate: today })
                 ]);
 
                 const products = prodRes.status === 'fulfilled' ? prodRes.value.data.data || [] : [];
@@ -48,29 +83,34 @@ const DashboardPage = () => {
                 const orders = recentData.data || [];
                 const orderTotal = recentData.total ?? orders.length;
                 const low = lowRes.status === 'fulfilled' ? lowRes.value.data.data || [] : [];
-                const pendingTotal = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.total ?? 0) : 0;
 
-                // Revenue: only 'delivered' orders (matches real ENUM: pending/shipped/delivered/cancelled)
-                const revenue = orders
-                    .filter(o => o.status === 'delivered')
-                    .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+                const salesTrend = salesRes.status === 'fulfilled' ? salesRes.value.data.data : { by_period: [] };
+
+                const todaySales = todaySalesRes.status === 'fulfilled' ? todaySalesRes.value.data.data : { summary: { total_revenue: 0, total_orders: 0 } };
+                const todayCustomer = todayCustomerRes.status === 'fulfilled' ? todayCustomerRes.value.data.data : { new_customers: 0 };
 
                 setStats({
                     products: products.length,
-                    orders: orderTotal,
+                    orders: todaySales.summary.total_orders, // Change to today's orders
                     lowStock: low.length,
-                    pending: pendingTotal,
-                    revenue,
+                    pending: orders.filter(o => o.status === 'pending').length,
+                    revenue: todaySales.summary.total_revenue, // Change to today's revenue
+                    revenueData: salesTrend.by_period.map(p => ({ value: Number(p.revenue) })),
+                    orderData: salesTrend.by_period.map(p => ({ value: Number(p.orders) })),
+                    customerCount: todayCustomer.new_customers // Change to today's customers
                 });
                 setLowStockItems(low.slice(0, 6));
                 setRecentOrders(orders);
-            } catch { }
+            } catch (err) {
+                console.error("Dashboard fetch error:", err);
+            }
             finally { setLoading(false); }
         };
         fetchAll();
     }, []);
 
     const fmt = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(n);
+    const num = (n) => new Intl.NumberFormat('th-TH').format(n || 0);
 
     const getStatusBadge = (status) => {
         const map = {
@@ -111,28 +151,50 @@ const DashboardPage = () => {
 
             {/* KPI Cards */}
             <div className="stats-grid">
-                <div className="stat-card card">
-                    <div className="stat-card-icon" style={{ background: 'rgba(99,102,241,0.15)' }}>
-                        <DollarSign size={22} color="#a5b4fc" />
+                <div className="stat-card card clickable" onClick={() => navigate('/admin/reports?tab=financial')}>
+                    <div className="stat-card-top">
+                        <div className="stat-card-icon" style={{ background: 'rgba(16, 185, 129, 0.15)' }}>
+                            <DollarSign size={22} color="#10b981" />
+                        </div>
+                        <ChevronRight size={14} className="stat-card-arrow" />
                     </div>
                     <div className="stat-card-info">
-                        <p className="stat-card-label">รายได้รวม</p>
+                        <p className="stat-card-label">ยอดขายรวม (วันนี้)</p>
                         {loading
                             ? <div className="skeleton" style={{ height: 32, width: 140, marginTop: 4 }} />
-                            : <p className="revenue-highlight">{fmt(stats.revenue).replace('฿', '฿')}</p>
+                            : <p className="revenue-highlight" style={{ color: '#059669' }}>{fmt(stats.revenue)}</p>
                         }
-                        <p className="revenue-period">จากออเดอร์ที่สำเร็จ</p>
+                        {stats.revenueData.length > 0 && <MiniChart data={stats.revenueData} color="#10b981" />}
                     </div>
                 </div>
-                <StatCard icon={<ShoppingBag size={22} color="#22d3ee" />} label="คำสั่งซื้อทั้งหมด"
-                    value={loading ? '—' : stats.orders} color="rgba(34,211,238,0.12)"
-                    sub="ทุกสถานะ" />
-                <StatCard icon={<Package size={22} color="#34d399" />} label="สินค้าในระบบ"
-                    value={loading ? '—' : stats.products} color="rgba(52,211,153,0.12)"
-                    sub="รายการทั้งหมด" />
-                <StatCard icon={<AlertTriangle size={22} color="#fb923c" />} label="รอดำเนินการ"
-                    value={loading ? '—' : stats.pending} color="rgba(251,146,60,0.12)"
-                    sub="ออเดอร์ใหม่" />
+
+                <StatCard
+                    icon={<ShoppingBag size={22} color="#6366f1" />}
+                    label="คำสั่งซื้อ (วันนี้)"
+                    value={loading ? '—' : num(stats.orders)}
+                    color="rgba(99, 102, 241, 0.12)"
+                    sub="ออเดอร์รายวัน"
+                    onClick={() => navigate('/admin/reports?tab=sales')}
+                    chartData={stats.orderData}
+                />
+
+                <StatCard
+                    icon={<Package size={22} color="#22d3ee" />}
+                    label="สินค้าทั้งหมด"
+                    value={loading ? '—' : num(stats.products)}
+                    color="rgba(34, 211, 238, 0.12)"
+                    sub="รายการสินค้าในระบบ"
+                    onClick={() => navigate('/admin/reports?tab=products')}
+                />
+
+                <StatCard
+                    icon={<Users size={22} color="#f59e0b" />}
+                    label="ลูกค้าใหม่ (วันนี้)"
+                    value={loading ? '—' : num(stats.customerCount)}
+                    color="rgba(245, 158, 11, 0.12)"
+                    sub="ผู้สมัครใหม่วันนี้"
+                    onClick={() => navigate('/admin/reports?tab=customers')}
+                />
             </div>
 
             {/* Low Stock Alert banner */}
@@ -185,12 +247,12 @@ const DashboardPage = () => {
                                 {lowStockItems.map(i => (
                                     <tr key={i.variant_id}>
                                         <td>
-                                            <div style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
+                                            <div style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-surface)' }}>
                                                 <ProductImage src={i.image_url} alt={i.product_name} size={14} />
                                             </div>
                                         </td>
-                                        <td style={{ fontWeight: 500, color: 'rgba(255,255,255,0.8)' }}>{i.product_name}</td>
-                                        <td style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, fontFamily: 'monospace' }}>{i.sku}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{i.product_name}</td>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'monospace' }}>{i.sku}</td>
                                         <td><span className="badge badge-orange">{i.stock_quantity}</span></td>
                                     </tr>
                                 ))}
@@ -222,17 +284,17 @@ const DashboardPage = () => {
                             <tbody>
                                 {recentOrders.map(o => (
                                     <tr key={o.order_id}>
-                                        <td style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', fontSize: 12 }}>
+                                        <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}>
                                             #{String(o.order_id).slice(-8)}
                                         </td>
-                                        <td style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                                        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
                                             {o.customer_name || o.phone_number || '—'}
                                         </td>
-                                        <td style={{ color: '#a5b4fc', fontWeight: 600, fontSize: 13 }}>
+                                        <td style={{ color: 'var(--accent-dark)', fontWeight: 700, fontSize: 13 }}>
                                             {fmt(o.total_amount || 0)}
                                         </td>
                                         <td><span className={getStatusBadge(o.status)}>{statusLabel[o.status] || o.status}</span></td>
-                                        <td style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                                             <Clock size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
                                             {o.created_at
                                                 ? new Date(o.created_at).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })

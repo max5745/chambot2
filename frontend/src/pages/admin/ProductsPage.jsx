@@ -158,11 +158,16 @@ const ProductsPage = () => {
         setModalOpen(true);
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('ต้องการลบสินค้านี้?')) return;
+    const handleDelete = async (p) => {
+        const isActive = p.is_active;
+        const msg = isActive
+            ? `ต้องการปิดการใช้งานสินค้า "${p.product_name || p.name}"?`
+            : `ต้องการลบสินค้า "${p.product_name || p.name}" ออกอย่างถาวร?\n(ข้อมูลจะถูกลบออกจากระบบทันทีและไม่สามารถกู้คืนได้)`;
+
+        if (!window.confirm(msg)) return;
         try {
-            await deleteProduct(id);
-            toast.success('ลบสินค้าสำเร็จ');
+            await deleteProduct(p.product_id);
+            toast.success(isActive ? 'ปิดการใช้งานสินค้าสำเร็จ' : 'ลบสินค้าถาวรสำเร็จ');
             fetchAll();
         } catch { toast.error('เกิดข้อผิดพลาด'); }
     };
@@ -341,15 +346,15 @@ const ProductsPage = () => {
                             padding: '7px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
                             fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7,
                             transition: 'all .15s',
-                            background: filterStatus === tab.key ? 'rgba(170,93,198,0.18)' : 'rgba(255,255,255,0.04)',
-                            color: filterStatus === tab.key ? '#c084fc' : 'rgba(255,255,255,0.45)',
-                            boxShadow: filterStatus === tab.key ? '0 0 0 1px rgba(170,93,198,0.4)' : '0 0 0 1px rgba(255,255,255,0.06)',
+                            background: filterStatus === tab.key ? 'rgba(170,93,198,0.12)' : 'var(--bg-secondary)',
+                            color: filterStatus === tab.key ? '#000000' : 'var(--text-secondary)',
+                            boxShadow: filterStatus === tab.key ? '0 0 0 1px rgba(170,93,198,0.3)' : '0 0 0 1px var(--border)',
                         }}
                     >
                         {tab.label}
                         <span style={{
-                            background: filterStatus === tab.key ? 'rgba(192,132,252,0.2)' : 'rgba(255,255,255,0.07)',
-                            color: filterStatus === tab.key ? '#c084fc' : 'rgba(255,255,255,0.3)',
+                            background: filterStatus === tab.key ? 'rgba(170,93,198,0.15)' : 'var(--bg-surface)',
+                            color: filterStatus === tab.key ? '#000000' : 'var(--text-muted)',
                             borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 700,
                         }}>{tab.count}</span>
                     </button>
@@ -371,7 +376,7 @@ const ProductsPage = () => {
                                     <button className="product-card-action-btn edit" title="แก้ไข" onClick={() => openEdit(p)}>
                                         <Pencil size={13} />
                                     </button>
-                                    <button className="product-card-action-btn del" title="ลบ" onClick={() => handleDelete(p.product_id)}>
+                                    <button className="product-card-action-btn del" title={p.is_active ? "ปิดการใช้งาน" : "ลบถาวร"} onClick={() => handleDelete(p)}>
                                         <Trash2 size={13} />
                                     </button>
                                 </div>
@@ -427,7 +432,7 @@ const ProductsPage = () => {
                                         <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
                                             <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}><Pencil size={13} /></button>
                                             <button className="btn btn-outline btn-sm" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
-                                                onClick={() => handleDelete(p.product_id)}><Trash2 size={13} /></button>
+                                                onClick={() => handleDelete(p)} title={p.is_active ? "ปิดการใช้งาน" : "ลบถาวร"}><Trash2 size={13} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -447,7 +452,7 @@ const ProductsPage = () => {
                         {/* Header */}
                         <div className="modal-header" style={{ padding: '22px 28px 18px' }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'rgba(255,255,255,0.95)' }}>
+                                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#000000' }}>
                                     {selectedProduct.product_name || selectedProduct.name}
                                 </h2>
                                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -500,7 +505,7 @@ const ProductsPage = () => {
                                                         // Find most common unit among variants
                                                         const units = selectedProduct.variants?.map(v => v.unit).filter(Boolean) || [];
                                                         const unit = units.length > 0 ? units[0] : 'ชิ้น';
-                                                        return <>{totalStock}<span style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginLeft: 6 }}>{unit}</span></>;
+                                                        return <>{totalStock}<span style={{ fontSize: 16, color: 'var(--text-muted)', marginLeft: 6 }}>{unit}</span></>;
                                                     })()}
                                                 </div>
                                             </div>
@@ -512,7 +517,7 @@ const ProductsPage = () => {
                                         {selectedProduct.description && (
                                             <div className="prod-detail-section">
                                                 <div className="prod-detail-section-title">📝 รายละเอียดสินค้า</div>
-                                                <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, margin: 0 }}>
+                                                <p style={{ fontSize: 15, color: '#2d3748', lineHeight: 1.8, margin: 0 }}>
                                                     {selectedProduct.description}
                                                 </p>
                                             </div>
@@ -531,12 +536,12 @@ const ProductsPage = () => {
                                                             <ProductImage src={v.image_url} size={14} />
                                                         </div>
                                                         <div className="v-info">
-                                                            <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: 4 }}>
+                                                            <div style={{ fontSize: 15, fontWeight: 700, color: '#000000', marginBottom: 4 }}>
                                                                 {v.sku || 'ไม่มีรหัสสินค้า'}
                                                             </div>
-                                                            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+                                                            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>
                                                                 {v.unit && <span>{v.unit} · </span>}
-                                                                {formatPrice(v.price)} · สต็อก: <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{v.stock_quantity}</strong>
+                                                                {formatPrice(v.price)} · สต็อก: <strong style={{ color: '#000000' }}>{v.stock_quantity}</strong>
                                                             </div>
                                                             <ThresholdAdjuster
                                                                 variantId={v.variant_id}
@@ -579,9 +584,9 @@ const ProductsPage = () => {
                                     <Cpu size={16} style={{ marginTop: 2, flexShrink: 0, color: embeddingInfo?.has_embedding ? '#34d399' : '#f87171' }} />
                                     <div style={{ minWidth: 0 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                            <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>AI Embedding</span>
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: '#000000' }}>AI Embedding</span>
                                             {embeddingInfo === null ? (
-                                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>กำลังตรวจสอบ...</span>
+                                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>กำลังตรวจสอบ...</span>
                                             ) : embeddingInfo.has_embedding ? (
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.12)', padding: '2px 8px', borderRadius: 99 }}>✓ มี Embedding</span>
                                             ) : (
@@ -590,11 +595,11 @@ const ProductsPage = () => {
                                         </div>
                                         {embeddingInfo?.has_embedding && (
                                             <>
-                                                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                                                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>
                                                     อัปเดตล่าสุด: {new Date(embeddingInfo.updated_at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
                                                 </p>
                                                 {embeddingInfo.text_used && (
-                                                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.25)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
+                                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 400 }}
                                                         title={embeddingInfo.text_used}>
                                                         📝 {embeddingInfo.text_used.slice(0, 120)}{embeddingInfo.text_used.length > 120 ? '…' : ''}
                                                     </p>
@@ -627,8 +632,8 @@ const ProductsPage = () => {
                         <div className="modal-footer" style={{ padding: '16px 28px 24px', gap: 12 }}>
                             <button className="btn btn-secondary"
                                 style={{ minHeight: 52, fontSize: 16, color: '#f87171', gap: 8 }}
-                                onClick={() => { const p = selectedProduct; setSelectedProduct(null); handleDelete(p.product_id); }}>
-                                <Trash2 size={18} /> ลบสินค้า
+                                onClick={() => { const p = selectedProduct; setSelectedProduct(null); handleDelete(p); }}>
+                                <Trash2 size={18} /> {selectedProduct.is_active ? 'ปิดการใช้งานสินค้า' : 'ลบสินค้าถาวร'}
                             </button>
                             <button className="btn btn-primary"
                                 style={{ minHeight: 52, fontSize: 16, gap: 8, flex: 1 }}
@@ -748,9 +753,9 @@ const ProductsPage = () => {
                                                 </label>
                                             </div>
                                             {v.image_url && <img src={getImageUrl(v.image_url)} alt="preview" className="image-preview" />}
-                                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'rgba(255,255,255,0.28)', lineHeight: 1.6 }}>
-                                                📐 แนะนำขนาด <strong style={{ color: 'rgba(255,255,255,0.45)' }}>800×800 px</strong> ขึ้นไป, อัตราส่วน 1:1<br />
-                                                🖼️ รองรับไฟล์: <strong style={{ color: 'rgba(255,255,255,0.45)' }}>JPG, PNG, WEBP</strong> · ขนาดไม่เกิน 5 MB
+                                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                                                📐 แนะนำขนาด <strong style={{ color: 'var(--text-secondary)' }}>800×800 px</strong> ขึ้นไป, อัตราส่วน 1:1<br />
+                                                🖼️ รองรับไฟล์: <strong style={{ color: 'var(--text-secondary)' }}>JPG, PNG, WEBP</strong> · ขนาดไม่เกิน 5 MB
                                             </p>
                                         </div>
                                     </div>
@@ -789,7 +794,7 @@ const ProductsPage = () => {
                                 <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <ScanLine size={20} color="#22d3ee" /> เพิ่มสินค้าด้วยรูปภาพ (AI OCR)
                                 </h2>
-                                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>วิเคราะห์รูปภาพด้วย AI เพื่อเพิ่มสินค้าอัตโนมัติ</p>
+                                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>วิเคราะห์รูปภาพด้วย AI เพื่อเพิ่มสินค้าอัตโนมัติ</p>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 {ocrStep > 1 && <button className="btn btn-secondary btn-sm" onClick={ocrReset}><RotateCcw size={13} /> เริ่มใหม่</button>}
@@ -798,21 +803,21 @@ const ProductsPage = () => {
                         </div>
 
                         {/* Steps */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>
                             {['อัปโหลดรูปภาพ', 'ตรวจสอบรายการ', 'บันทึกข้อมูล'].map((label, i) => (
                                 <React.Fragment key={i}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <div style={{
                                             width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
-                                            background: ocrStep > i + 1 ? '#22d3ee' : ocrStep === i + 1 ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.05)',
-                                            border: ocrStep === i + 1 ? '1.5px solid #22d3ee' : '1.5px solid rgba(255,255,255,0.08)',
-                                            color: ocrStep > i + 1 ? '#000' : ocrStep === i + 1 ? '#22d3ee' : 'rgba(255,255,255,0.3)'
+                                            background: ocrStep > i + 1 ? '#22d3ee' : ocrStep === i + 1 ? 'rgba(34,211,238,0.15)' : 'var(--bg-surface)',
+                                            border: ocrStep === i + 1 ? '1.5px solid #22d3ee' : '1.5px solid var(--border)',
+                                            color: ocrStep > i + 1 ? '#000' : ocrStep === i + 1 ? '#0891b2' : 'var(--text-muted)'
                                         }}>
                                             {ocrStep > i + 1 ? <CheckCircle size={14} /> : i + 1}
                                         </div>
-                                        <span style={{ fontSize: 13, color: ocrStep === i + 1 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)' }}>{label}</span>
+                                        <span style={{ fontSize: 13, color: ocrStep === i + 1 ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: ocrStep === i + 1 ? 700 : 400 }}>{label}</span>
                                     </div>
-                                    {i < 2 && <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />}
+                                    {i < 2 && <ChevronRight size={14} style={{ color: 'var(--border)', flexShrink: 0 }} />}
                                 </React.Fragment>
                             ))}
                         </div>
@@ -825,10 +830,10 @@ const ProductsPage = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     <div
                                         style={{
-                                            border: `2px dashed ${ocrDragOver ? '#22d3ee' : 'rgba(255,255,255,0.12)'}`,
+                                            border: `2px dashed ${ocrDragOver ? '#22d3ee' : 'var(--border)'}`,
                                             borderRadius: 14, padding: ocrPreview ? 0 : 40, cursor: 'pointer',
                                             textAlign: 'center', transition: 'all .2s', overflow: 'hidden',
-                                            background: ocrDragOver ? 'rgba(34,211,238,0.04)' : 'rgba(255,255,255,0.02)',
+                                            background: ocrDragOver ? 'rgba(34,211,238,0.04)' : 'var(--bg-primary)',
                                             minHeight: ocrPreview ? 200 : 160,
                                         }}
                                         onClick={() => ocrFileRef.current?.click()}
@@ -839,9 +844,9 @@ const ProductsPage = () => {
                                         {ocrPreview
                                             ? <img src={ocrPreview} alt="preview" style={{ width: '100%', maxHeight: 280, objectFit: 'contain' }} />
                                             : (<>
-                                                <Upload size={36} style={{ color: 'rgba(255,255,255,0.2)', marginBottom: 12 }} />
-                                                <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: 15 }}>ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์</p>
-                                                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>รองรับ JPG, PNG, WEBP — สูงสุด 10MB</span>
+                                                <Upload size={36} style={{ color: 'var(--text-muted)', marginBottom: 12 }} />
+                                                <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 15 }}>ลากรูปมาวางหรือคลิกเพื่อเลือกไฟล์</p>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>รองรับ JPG, PNG, WEBP — สูงสุด 10MB</span>
                                             </>)
                                         }
                                         <input type="file" ref={ocrFileRef} accept="image/*" style={{ display: 'none' }} onChange={e => ocrHandleFile(e.target.files[0])} />
@@ -854,8 +859,8 @@ const ProductsPage = () => {
                                             </button>
                                         </div>
                                     )}
-                                    <div className="card" style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.8 }}>
-                                        <p style={{ margin: '0 0 6px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>💡 เคล็ดลับ</p>
+                                    <div className="card" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8, background: 'var(--bg-surface)' }}>
+                                        <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)' }}>💡 เคล็ดลับ</p>
                                         <ul style={{ margin: 0, paddingLeft: 18 }}>
                                             <li>รูปรายการสินค้า / ใบเสร็จ / คาตาล็อก — AI จะอ่านทีละรายการ</li>
                                             <li>ภาพชัด ไม่เบลอ ได้ผลแม่นยำกว่า</li>
@@ -873,8 +878,8 @@ const ProductsPage = () => {
                                         <div style={{ display: 'flex', gap: 20 }}>
                                             {[['รายการทั้งหมด', ocrItems.length, ''], ['จะบันทึก', ocrActiveItems.length, '#22d3ee'], ['สินค้าใหม่', ocrActiveItems.filter(i => i.is_new).length, '#a78bfa'], ['เพิ่มสต็อก', ocrActiveItems.filter(i => !i.is_new).length, '#34d399']].map(([label, val, color]) => (
                                                 <div key={label} style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: 20, fontWeight: 800, color: color || 'rgba(255,255,255,0.7)' }}>{val}</div>
-                                                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{label}</div>
+                                                    <div style={{ fontSize: 20, fontWeight: 800, color: color || 'var(--text-primary)' }}>{val}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -883,12 +888,12 @@ const ProductsPage = () => {
 
                                     {/* Items */}
                                     {ocrItems.map((item, idx) => (
-                                        <div key={idx} className="card" style={{ opacity: item._skip ? 0.4 : 1, border: !item._skip && item.is_new && !(parseFloat(item.price) > 0) ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.06)', padding: '14px 16px' }}>
+                                        <div key={idx} className="card" style={{ opacity: item._skip ? 0.4 : 1, border: !item._skip && item.is_new && !(parseFloat(item.price) > 0) ? '1.5px solid var(--danger)' : '1px solid var(--border)', padding: '14px 16px', background: item._skip ? 'var(--bg-surface)' : 'var(--bg-secondary)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                                                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                                                     <span className={`badge ${item.is_new ? 'badge-green' : 'badge-cyan'}`}>{item.is_new ? '✨ สินค้าใหม่' : '📦 เพิ่มสต็อก'}</span>
                                                     {!item._skip && item.is_new && !(parseFloat(item.price) > 0) && <span className="badge badge-red"><AlertTriangle size={11} /> ต้องใส่ราคา</span>}
-                                                    {!item.is_new && item.existing_product_name && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>ตรงกับ: {item.existing_product_name}</span>}
+                                                    {!item.is_new && item.existing_product_name && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>ตรงกับ: {item.existing_product_name}</span>}
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     <button className="btn btn-secondary btn-sm" onClick={() => setOcrEditingIdx(ocrEditingIdx === idx ? null : idx)}>
@@ -905,17 +910,17 @@ const ProductsPage = () => {
                                                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
                                                     {item.is_new ? (
                                                         <>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>ชื่อสินค้า</span><div style={{ fontWeight: 600 }}>{item.name || '—'}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>SKU</span><div>{item.sku || '—'}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>ราคาขาย *</span><div style={{ fontWeight: 700, color: parseFloat(item.price) > 0 ? '#a5b4fc' : '#f87171' }}>{parseFloat(item.price) > 0 ? `฿${parseFloat(item.price).toLocaleString()}` : '⚠ ยังไม่ระบุ'}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สต็อก</span><div>{item.stock_quantity} {item.unit || ''}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>ชื่อสินค้า</span><div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.name || '—'}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>SKU</span><div style={{ color: 'var(--text-primary)' }}>{item.sku || '—'}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>ราคาขาย *</span><div style={{ fontWeight: 700, color: parseFloat(item.price) > 0 ? 'var(--accent)' : 'var(--danger)' }}>{parseFloat(item.price) > 0 ? `฿${parseFloat(item.price).toLocaleString()}` : '⚠ ยังไม่ระบุ'}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>สต็อก</span><div style={{ color: 'var(--text-primary)' }}>{item.stock_quantity} {item.unit || ''}</div></div>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สินค้า</span><div style={{ fontWeight: 600 }}>{item.existing_product_name || item.name}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>สต็อกปัจจุบัน</span><div>{item.existing_variant_stock ?? '—'}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>จะเพิ่ม</span><div style={{ fontWeight: 700, color: '#22d3ee' }}>+{item.stock_quantity || 1}</div></div>
-                                                            <div><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>หลังเพิ่ม</span><div style={{ fontWeight: 700, color: '#a5b4fc' }}>{(item.existing_variant_stock || 0) + (parseInt(item.stock_quantity) || 0)}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>สินค้า</span><div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.existing_product_name || item.name}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>สต็อกปัจจุบัน</span><div style={{ color: 'var(--text-primary)' }}>{item.existing_variant_stock ?? '—'}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>จะเพิ่ม</span><div style={{ fontWeight: 700, color: 'var(--cyan)' }}>+{item.stock_quantity || 1}</div></div>
+                                                            <div><span style={{ color: 'var(--text-muted)', fontSize: 11 }}>หลังเพิ่ม</span><div style={{ fontWeight: 700, color: 'var(--accent)' }}>{(item.existing_variant_stock || 0) + (parseInt(item.stock_quantity) || 0)}</div></div>
                                                         </>
                                                     )}
                                                 </div>
@@ -953,7 +958,7 @@ const ProductsPage = () => {
                                     ))}
 
                                     {/* Review Footer */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
                                         <button className="btn btn-secondary" onClick={() => setOcrStep(1)}>← กลับ</button>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                             {ocrMissingPrice().length > 0 && (
@@ -973,21 +978,21 @@ const ProductsPage = () => {
                             {ocrStep === 3 && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {ocrSaving && (
-                                        <div className="card" style={{ padding: '18px 20px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10, color: 'rgba(255,255,255,0.6)' }}>
+                                        <div className="card" style={{ padding: '18px 20px', background: 'var(--bg-surface)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10, color: 'var(--text-secondary)' }}>
                                                 <span>กำลังบันทึก... {ocrSaveResults.done} / {ocrActiveItems.length}</span>
                                                 <span>{Math.round((ocrSaveResults.done / Math.max(ocrActiveItems.length, 1)) * 100)}%</span>
                                             </div>
-                                            <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                                                <div style={{ height: '100%', borderRadius: 999, background: '#22d3ee', transition: 'width .3s', width: `${(ocrSaveResults.done / Math.max(ocrActiveItems.length, 1)) * 100}%` }} />
+                                            <div style={{ height: 8, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', borderRadius: 999, background: 'var(--cyan)', transition: 'width .3s', width: `${(ocrSaveResults.done / Math.max(ocrActiveItems.length, 1)) * 100}%` }} />
                                             </div>
                                         </div>
                                     )}
                                     {!ocrSaving && (
                                         <div className="card" style={{ textAlign: 'center', padding: '24px 20px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 20 }}>
-                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: '#34d399' }}>{ocrSaveResults.success}</div><div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>บันทึกสำเร็จ</div></div>
-                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: '#f87171' }}>{ocrSaveResults.failed}</div><div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>ล้มเหลว</div></div>
+                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>{ocrSaveResults.success}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>บันทึกสำเร็จ</div></div>
+                                                <div><div style={{ fontSize: 28, fontWeight: 800, color: 'var(--danger)' }}>{ocrSaveResults.failed}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>ล้มเหลว</div></div>
                                             </div>
                                             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                                                 <button className="btn btn-secondary" onClick={ocrReset}><RotateCcw size={14} /> นำเข้าใหม่</button>

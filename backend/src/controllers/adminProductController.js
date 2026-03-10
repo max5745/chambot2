@@ -73,8 +73,16 @@ const toggleProduct = async (req, res) => {
  */
 const deleteProduct = async (req, res) => {
     try {
-        await productSvc.softDelete(req.params.id);
-        ok(res, { message: 'Product deactivated successfully' });
+        const product = await productSvc.getById(req.params.id);
+        if (!product) return fail(res, { status: 404, message: 'Product not found' });
+
+        if (product.is_active) {
+            await productSvc.softDelete(req.params.id);
+            ok(res, { message: 'Product deactivated successfully' });
+        } else {
+            await productSvc.remove(req.params.id);
+            ok(res, { message: 'Product permanently deleted' });
+        }
     } catch (e) { fail(res, e); }
 };
 

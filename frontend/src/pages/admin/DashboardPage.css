@@ -55,12 +55,10 @@
 .revenue-highlight {
     font-size: 32px;
     font-weight: 900;
-    background: linear-gradient(135deg, #6366f1, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
     letter-spacing: -1.5px;
     line-height: 1;
+    margin-top: 4px;
 }
 
 .revenue-period {
@@ -90,4 +88,42 @@
 
 .empty-state svg {
     opacity: 0.2;
+}
+
+/* Clickable Stats */
+.stat-card.clickable {
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    border: 1px solid var(--border);
+}
+
+.stat-card.clickable:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-light);
+    box-shadow: var(--shadow-lg);
+    background: var(--bg-surface);
+}
+
+.stat-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2px;
+}
+
+.stat-card-arrow {
+    color: var(--text-muted);
+    opacity: 0.3;
+    transition: all 0.2s;
+}
+
+.stat-card.clickable:hover .stat-card-arrow {
+    opacity: 1;
+    color: var(--accent);
+    transform: translateX(2px);
+}
+
+.dashboard-revenue-chart {
+    min-height: 300px;
 }

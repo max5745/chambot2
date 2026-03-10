@@ -436,7 +436,7 @@
 
 .threshold-label {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     white-space: nowrap;
 }
 
@@ -474,7 +474,7 @@
     text-align: center;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
     outline: none;
@@ -558,7 +558,7 @@
 .modal-close {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     cursor: pointer;
     padding: 4px;
     border-radius: 6px;
@@ -658,7 +658,7 @@
 .btn-star {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -811,7 +811,7 @@
 .prod-num-label {
     font-size: 12px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.4px;
     margin-bottom: 4px;
@@ -820,7 +820,7 @@
 .prod-num-val {
     font-size: 28px;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.9);
+    color: #1a202c;
     line-height: 1;
 }
 
@@ -843,7 +843,7 @@
 .prod-detail-section-title {
     font-size: 14px;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }

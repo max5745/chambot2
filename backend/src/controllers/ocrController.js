@@ -2,6 +2,7 @@ const Groq = require("groq-sdk");
 const multer = require("multer");
 const db = require("../config/supabaseClient");
 const embeddingService = require("../services/embeddingService");
+const productService = require("../services/productService");
 
 // ─── Multer (in-memory for OCR) ─────────────────────────────────────────────
 const storage = multer.memoryStorage();
@@ -19,38 +20,49 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ─── OCR Scan ───────────────────────────────────────────────────────────────
 const scanImage = async (req, res) => {
+    // Diagnostic logging
+    console.log(`[${new Date().toISOString()}] 📥 OCR Request received`);
     if (!req.file) {
+        console.warn("⚠️ OCR Request missing file. Body:", req.body);
         return res.status(400).json({ success: false, message: "กรุณาอัปโหลดรูปภาพ" });
     }
+    console.log(`📸 File: "${req.file.originalname}" Size: ${req.file.size} bytes`);
 
     try {
+        const now = new Date().toISOString();
         const base64Image = req.file.buffer.toString("base64");
         const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
 
         const prompt = `
-วิเคราะห์รูปภาพนี้และดึงข้อมูลสินค้าทุกชิ้นที่เห็นออกมา
-ถ้าเป็นใบเสร็จ รายการสั่งซื้อ หรือรายการสินค้า ให้ดึงทุกรายการ
-ถ้าเป็นรูปสินค้า ให้ดึงข้อมูลสินค้านั้น
+Timestamp: ${now}
+วิเคราะห์รูปภาพนี้และดึงข้อมูลสินค้าออกมาให้ได้มากที่สุด
+ถ้าเป็นใบเสร็จ รายการสั่งซื้อ หรือรูปสินค้าเดี่ยว:
 
-ตอบเป็น JSON array เท่านั้น ไม่มีข้อความอื่น ไม่มี markdown:
+1. ดึงชื่อสินค้า (name): 
+   - ให้พยายามหาทั้งภาษาไทยและภาษาอังกฤษ (ถ้ามี) เช่น "โอเลย์ รีเจนเนอริส / Olay Regenerist"
+   - ถ้ามีชื่อในรูปเป็นภาษาอังกฤษอย่างเดียว แต่คุณรู้คำแปลภาษาไทย ให้ใส่มาด้วย
+2. แยกชื่อแบรนด์ (brand): ถ้าพบ
+3. ข้อมูลอื่น: sku, price, stock_quantity, unit, category_name
+
+ตอบเป็น JSON array เท่านั้น:
 [
   {
-    "name": "ชื่อสินค้า (ต้องมี)",
-    "description": "รายละเอียดสินค้า หรือ null",
+    "name": "ชื่อสินค้า (ไทย/Eng)",
+    "brand": "ชื่อแบรนด์ หรือ null",
+    "description": "รายละเอียดสั้นๆ หรือ null",
     "sku": "รหัสสินค้าหรือบาร์โค้ด หรือ null",
-    "price": ตัวเลขราคาต่อหน่วย (number หรือ null),
-    "stock_quantity": จำนวนสินค้า (number, default 1),
-    "unit": "หน่วย เช่น ชิ้น, กล่อง, kg หรือ null",
-    "category_name": "หมวดหมู่โดยประมาณ หรือ null",
-    "confidence": "high | medium | low"
+    "price": ตัวเลขราคา (number หรือ null),
+    "stock_quantity": จำนวน (number, default 1),
+    "unit": "หน่วย เช่น ชิ้น, กล่อง หรือ null",
+    "category_name": "หมวดหมู่ หรือ null"
   }
 ]
 
 กฎ:
-- ห้ามตอบอะไรนอกจาก JSON array
+- ห้ามตอบอย่างอื่นนอกจาก JSON
 - ถ้าอ่านราคาไม่ได้ให้ใส่ null
-- stock_quantity default เป็น 1 ถ้าไม่ระบุในรูป
-- ถ้าไม่มีสินค้าในรูปเลย ให้ตอบ []
+- stock_quantity default เป็น 1
+- ถ้าไม่มีสินค้าเลย ให้ตอบ []
 `;
 
         const response = await groq.chat.completions.create({
@@ -72,13 +84,15 @@ const scanImage = async (req, res) => {
 
         // Parse JSON (strip markdown fences if present)
         let jsonText = rawText;
-        const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (match) jsonText = match[1];
+        const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) jsonText = jsonMatch[1];
 
         let products;
         try {
             products = JSON.parse(jsonText);
-        } catch {
+        } catch (parseErr) {
+            console.error("❌ OCR JSON Parse Error:", parseErr.message);
+            console.log("Raw text from AI:", rawText);
             return res.status(422).json({
                 success: false,
                 message: "ไม่สามารถอ่านข้อมูลสินค้าจากรูปภาพได้ กรุณาลองด้วยรูปภาพอื่น",
@@ -100,28 +114,36 @@ const scanImage = async (req, res) => {
 
             // 1. Try match by SKU first
             if (p.sku) {
-                const r = await db.query(
-                    `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
-                     FROM product_variants pv
-                     JOIN products p ON p.product_id = pv.product_id
-                     WHERE pv.sku = $1 LIMIT 1`,
-                    [p.sku]
-                );
-                if (r.rows.length > 0) existingVariant = r.rows[0];
+                try {
+                    const r = await db.query(
+                        `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
+                         FROM product_variants pv
+                         JOIN products p ON p.product_id = pv.product_id
+                         WHERE pv.sku = $1 LIMIT 1`,
+                        [p.sku]
+                    );
+                    if (r.rows.length > 0) existingVariant = r.rows[0];
+                } catch (skuErr) {
+                    console.error("SKU match error:", skuErr.message);
+                }
             }
 
             // 2. Fallback: match by product name (case-insensitive + normalized)
             if (!existingVariant && p.name) {
-                const r = await db.query(
-                    `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
-                     FROM product_variants pv
-                     JOIN products p ON p.product_id = pv.product_id
-                     WHERE REPLACE(LOWER(p.name), ' ', '') = REPLACE(LOWER($1), ' ', '')
-                     OR LOWER(TRIM(p.name)) = LOWER(TRIM($1))
-                     ORDER BY pv.variant_id ASC LIMIT 1`,
-                    [p.name]
-                );
-                if (r.rows.length > 0) existingVariant = r.rows[0];
+                try {
+                    const r = await db.query(
+                        `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
+                         FROM product_variants pv
+                         JOIN products p ON p.product_id = pv.product_id
+                         WHERE REPLACE(LOWER(p.name), ' ', '') = REPLACE(LOWER($1), ' ', '')
+                         OR LOWER(TRIM(p.name)) = LOWER(TRIM($1))
+                         ORDER BY pv.variant_id ASC LIMIT 1`,
+                        [p.name]
+                    );
+                    if (r.rows.length > 0) existingVariant = r.rows[0];
+                } catch (nameErr) {
+                    console.error("Name match error:", nameErr.message);
+                }
             }
 
             // 3. Fallback: Semantic Match (AI Matching)
@@ -136,7 +158,7 @@ const scanImage = async (req, res) => {
                          JOIN products p ON p.product_id = pe.product_id
                          JOIN product_variants pv ON pv.product_id = p.product_id
                          WHERE p.is_active = true
-                         AND (1 - (pe.embedding <=> $1::vector)) > 0.85
+                         AND (1 - (pe.embedding <=> $1::vector)) > 0.75
                          ORDER BY similarity DESC LIMIT 1`,
                         [vecStr]
                     );
@@ -149,23 +171,54 @@ const scanImage = async (req, res) => {
                 }
             }
 
+            // 4. If still no match, create a NEW product automatically
+            if (!existingVariant) {
+                try {
+                    console.log(`✨ OCR creating new product: "${p.name}"`);
+                    const newProd = await productService.create({
+                        name: p.name,
+                        description: p.description || `Auto-created from OCR scan (Brand: ${p.brand || 'Unknown'})`,
+                        category_id: null,
+                        is_active: true,
+                        variants: [{
+                            sku: p.sku || `OCR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                            price: p.price || 0,
+                            stock_quantity: 0,
+                            unit: p.unit,
+                            is_main: true
+                        }]
+                    });
+
+                    // Fetch the variant for consistent data
+                    const r = await db.query(
+                        `SELECT pv.variant_id, pv.sku, pv.stock_quantity, p.name as product_name, p.product_id
+                         FROM product_variants pv
+                         JOIN products p ON p.product_id = pv.product_id
+                         WHERE p.product_id = $1 LIMIT 1`,
+                        [newProd.product_id]
+                    );
+                    if (r.rows.length > 0) existingVariant = r.rows[0];
+                } catch (createErr) {
+                    console.error(`❌ OCR auto-creation failed for "${p.name}":`, createErr.message);
+                }
+            }
+
             return {
                 ...p,
                 is_new: !existingVariant,
                 existing_variant_id: existingVariant?.variant_id || null,
                 existing_variant_stock: existingVariant?.stock_quantity ?? null,
                 existing_product_name: existingVariant?.product_name || null,
-                // Clear price for existing products — only need qty
                 price: existingVariant ? null : p.price,
             };
         }));
 
         res.status(200).json({ success: true, data: enriched });
-    } catch (error) {
-        console.error("OCR Error:", error);
+    } catch (globalErr) {
+        console.error("OCR Global Error:", globalErr);
         res.status(500).json({
             success: false,
-            message: error.message || "เกิดข้อผิดพลาดในการวิเคราะห์รูปภาพ",
+            message: globalErr.message || "เกิดข้อผิดพลาดในการวิเคราะห์รูปภาพ",
         });
     }
 };

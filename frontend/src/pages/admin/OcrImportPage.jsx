@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, ScanLine, CheckCircle, XCircle, AlertTriangle, Edit3, Save, Trash2, ChevronRight, RotateCcw, Eye } from 'lucide-react';
-import { ocrScan, createProduct } from '../../api';
+import { ocrScan, createProduct, adjustStock } from '../../api';
 import API from '../../api';
 import toast from 'react-hot-toast';
 import './OcrImportPage.css';
@@ -46,6 +46,7 @@ const OcrImportPage = () => {
         setItems([]);
         setItemStatuses({});
         setStep(1);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const handleDrop = useCallback((e) => {
@@ -129,9 +130,11 @@ const OcrImportPage = () => {
                     });
                 } else {
                     // Adjust stock on existing variant
-                    await API.patch(`/variants/${item.existing_variant_id}/stock`, {
-                        adjustment: parseInt(item.stock_quantity) || 1,
-                    });
+                    await adjustStock(
+                        item.existing_variant_id,
+                        parseInt(item.stock_quantity) || 1,
+                        'OCR Import'
+                    );
                 }
                 setItemStatuses(prev => ({ ...prev, [idx]: { status: 'success' } }));
                 success++;

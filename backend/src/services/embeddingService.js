@@ -155,7 +155,7 @@ const embedAllProducts = async () => {
         try {
             await embedProduct(product_id);
             done++;
-        } catch {
+        } catch (err) {
             failed++;
         }
     }
